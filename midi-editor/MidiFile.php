@@ -16,13 +16,17 @@ class MidiFile {
         $chunks = $this->splitChunks($binaryMidi);
         $headerChunk = array_shift($chunks);
 
-        $this->parseHeaderChunk($headerChunk);
+        $this->header = $this->parseHeaderChunk($headerChunk);
 
         if ($this->header->trackCount !== count($chunks)) {
             $this->log('Track count in header "' . $this->header->trackCount . '" does not match real track count "' . count($chunks) . '"');
         }
 
-        $this->parseTrackChunks($chunks);
+        $this->tracks = array();
+
+        foreach ($chunks as $chunk) {
+            $this->tracks[] = $this->parseTrackChunk($chunk);
+        }
     }
 
     public function splitChunks($binaryMidi) {
@@ -58,19 +62,23 @@ class MidiFile {
     }
 
     private function parseHeaderChunk($headerChunk) {
-        $this->header = (object) unpack('ntype/ntrackCount/ntimeDivision', $headerChunk);
+        $header = (object) unpack('ntype/ntrackCount/ntimeDivision', $headerChunk);
 
-        if (!in_array($this->header->type, array(0, 1, 2))) {
-            $this->log('Invalid MIDI format type ("' . $this->header->type . '")');
+        if (!in_array($header->type, array(0, 1, 2))) {
+            $this->log('Invalid MIDI format type ("' . $header->type . '")');
         }
+
+        return $header;
     }
 
-    private function parseTrackChunks($chunks) {
-        $this->tracks = array();
+    private function parseTrackChunk($chunk) {
+        $track = array();
 
-        foreach ($chunks as $chunk) {
-            //$this->tracks[] = '';
-        }
+        //while (strlen($chunk) > 0) {
+        //    $track[] = ...;
+        //}
+
+        return $track;
     }
 
     private function log($message) {
