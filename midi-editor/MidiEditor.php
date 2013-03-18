@@ -8,5 +8,6 @@ class MidiEditor {
     public static function main() {
         $midiFile = new MidiFile();
         $midiFile->load('Ungarischer Tanz.mid');
+        $midiFile->save('Ungarischer Tanz.txt');
     }
 }

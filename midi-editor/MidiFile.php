@@ -29,6 +29,10 @@ class MidiFile {
         }
     }
 
+    public function save($filename) {
+        file_put_contents($filename, print_r($this->tracks, true));
+    }
+
     public function splitChunks($binaryMidi) {
         $chunks = array();
 
@@ -51,7 +55,7 @@ class MidiFile {
 
             if (strlen($binaryMidi) - 8 < $chunkLength) {
                 $this->log('Incomplete chunk (expected ' . $chunkLength . ' bytes - got ' . (strlen($binaryMidi) - 8) . ' bytes)');
-                break;
+                $chunkLength = strlen($binaryMidi) - 8;
             }
 
             $chunks[] = substr($binaryMidi, 8, $chunkLength);
@@ -72,13 +76,98 @@ class MidiFile {
     }
 
     private function parseTrackChunk($chunk) {
-        $track = array();
+        $trackEvents = array();
+        $offset = 0;
 
-        //while (strlen($chunk) > 0) {
-        //    $track[] = ...;
-        //}
+        while ($offset < strlen($chunk)) {
+            $deltaTime = $this->parseVariableLengthValue($chunk, $offset);
+            $eventType = $this->parseByte($chunk, $offset);
 
-        return $track;
+            $trackEvent = (object) array(
+                'deltaTime' => $deltaTime,
+                'eventType' => $eventType,
+            );
+
+            if ($eventType == 0xff) {
+                $trackEvent->metaEventType = $this->parseByte($chunk, $offset);
+                $metaEventLength = $this->parseVariableLengthValue($chunk, $offset);
+                $trackEvent->metaEventData = substr($chunk, $offset, $metaEventLength);
+                $offset += $metaEventLength;
+            } else {
+                $trackEvent->channel = $eventType & 0x0f;
+                $eventType = ($eventType & 0xf0) >> 4;
+
+                if ($eventType == 0x8) {
+                    $trackEvent->eventType = 'noteOff';
+                    $trackEvent->note = $this->parseByte($chunk, $offset);
+                    $trackEvent->velocity = $this->parseByte($chunk, $offset);
+                } elseif ($eventType == 0x9) {
+                    $trackEvent->eventType = 'noteOn';
+                    $trackEvent->note = $this->parseByte($chunk, $offset);
+                    $trackEvent->velocity = $this->parseByte($chunk, $offset);
+                } elseif ($eventType == 0xa) {
+                    $trackEvent->eventType = 'noteAftertouch';
+                    $trackEvent->note = $this->parseByte($chunk, $offset);
+                    $trackEvent->aftertouch = $this->parseByte($chunk, $offset);
+                } elseif ($eventType == 0xb) {
+                    $trackEvent->eventType = 'controller';
+                    $trackEvent->controller = $this->parseByte($chunk, $offset);
+                    $trackEvent->value = $this->parseByte($chunk, $offset);
+                } elseif ($eventType == 0xc) {
+                    $trackEvent->eventType = 'programChange';
+                    $trackEvent->program = $this->parseByte($chunk, $offset);
+                } elseif ($eventType == 0xd) {
+                    $trackEvent->eventType = 'channelAftertouch';
+                    $trackEvent->aftertouch = $this->parseByte($chunk, $offset);
+                } elseif ($eventType == 0xe) {
+                    $trackEvent->eventType = 'pitchBend';
+                    $value1 = $this->parseByte($chunk, $offset);
+                    $value2 = $this->parseByte($chunk, $offset);
+                    $trackEvent->pitch = ($value2 << 8) | $value1;
+                } else {
+                    $this->log('Ignored unknown event type "' . $eventType . '"');
+                }
+            }
+
+            $trackEvents[] = $trackEvent;
+        }
+
+        return $trackEvents;
+    }
+
+    private function parseVariableLengthValue($chunk, &$offset) {
+        $value = 0;
+        $valueLength = 0;
+
+        while ($valueLength < 4) {
+            $byte = $this->parseByte($chunk, $offset);
+
+            $valueLength++;
+            $byteFollows = $byte & 0x80 ? true : false;
+            $byte = $byte & 0x7f;
+            $value = ($value << 7) | $byte;
+
+            if (!$byteFollows) {
+                break;
+            }
+        }
+
+        return $value;
+    }
+
+    private function parseByte($chunk, &$offset) {
+        if ($offset >= strlen($chunk)) {
+            $this->log('Unexpected end of chunk');
+            return 0;
+        }
+
+        $byte = substr($chunk, $offset, 1);
+        $byte = unpack('Cbyte', $byte);
+        $byte = $byte['byte'];
+
+        $offset += 1;
+
+        return $byte;
     }
 
     private function log($message) {
