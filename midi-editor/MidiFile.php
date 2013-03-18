@@ -48,14 +48,16 @@ class MidiFile {
 
     private function splitChunks($binaryMidi) {
         $chunks = array();
+        $offset = 0;
 
-        while (strlen($binaryMidi) > 0) {
-            if (strlen($binaryMidi) < 8) {
-                $this->log('Incomplete chunk header (expected 8 bytes - got ' . strlen($binaryMidi) . ' bytes)');
+        while ($offset < strlen($binaryMidi)) {
+            if (strlen($binaryMidi) - $offset < 8) {
+                $this->log('Incomplete chunk header (expected 8 bytes - got ' . (strlen($binaryMidi) - $offset) . ' bytes)');
                 break;
             }
 
-            $signature = substr($binaryMidi, 0, 4);
+            $signature = substr($binaryMidi, $offset, 4);
+            $offset += 4;
             $expectedSignature = count($chunks) == 0 ? 'MThd' : 'MTrk';
 
             if ($signature !== $expectedSignature) {
@@ -63,16 +65,17 @@ class MidiFile {
                 break;
             }
 
-            $chunkLength = unpack('Nlength', substr($binaryMidi, 4, 4));
+            $chunkLength = unpack('Nlength', substr($binaryMidi, $offset, 4));
+            $offset += 4;
             $chunkLength = $chunkLength['length'];
 
-            if (strlen($binaryMidi) - 8 < $chunkLength) {
-                $this->log('Incomplete chunk (expected ' . $chunkLength . ' bytes - got ' . (strlen($binaryMidi) - 8) . ' bytes)');
-                $chunkLength = strlen($binaryMidi) - 8;
+            if (strlen($binaryMidi) - $offset < $chunkLength) {
+                $this->log('Incomplete chunk (expected ' . $chunkLength . ' bytes - got ' . (strlen($binaryMidi) - $offset) . ' bytes)');
+                $chunkLength = strlen($binaryMidi) - $offset;
             }
 
-            $chunks[] = substr($binaryMidi, 8, $chunkLength);
-            $binaryMidi = substr($binaryMidi, 8 + $chunkLength);
+            $chunks[] = substr($binaryMidi, $offset, $chunkLength);
+            $offset += $chunkLength;
         }
 
         return $chunks;
