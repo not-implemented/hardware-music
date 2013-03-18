@@ -33,7 +33,7 @@ class MidiFile {
         file_put_contents($filename, print_r($this->tracks, true));
     }
 
-    public function splitChunks($binaryMidi) {
+    private function splitChunks($binaryMidi) {
         $chunks = array();
 
         while (strlen($binaryMidi) > 0) {
