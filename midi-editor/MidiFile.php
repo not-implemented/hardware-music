@@ -95,6 +95,8 @@ class MidiFile {
         */
     );
 
+    private $noteMapping = array('C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'B', 'H');
+
     public function load($filename) {
         $binaryMidi = @file_get_contents($filename);
         if ($binaryMidi === false) {
@@ -272,17 +274,17 @@ class MidiFile {
                     $trackEvent->type = $this->eventTypeMapping[$eventType];
 
                     if ($trackEvent->type == 'noteOff') {
-                        $trackEvent->note = $this->parseByte($chunk, $offset);
+                        $trackEvent->note = $this->mapNoteFromMidi($this->parseByte($chunk, $offset));
                         $trackEvent->velocity = $this->parseByte($chunk, $offset);
                     } elseif ($trackEvent->type == 'noteOn') {
-                        $trackEvent->note = $this->parseByte($chunk, $offset);
+                        $trackEvent->note = $this->mapNoteFromMidi($this->parseByte($chunk, $offset));
                         $trackEvent->velocity = $this->parseByte($chunk, $offset);
 
                         if ($trackEvent->velocity == 0) {
                             $trackEvent->type = 'noteOff';
                         }
                     } elseif ($trackEvent->type == 'noteAftertouch') {
-                        $trackEvent->note = $this->parseByte($chunk, $offset);
+                        $trackEvent->note = $this->mapNoteFromMidi($this->parseByte($chunk, $offset));
                         $trackEvent->amount = $this->parseByte($chunk, $offset);
                     } elseif ($trackEvent->type == 'controller') {
                         $controllerType = $this->parseByte($chunk, $offset);
@@ -297,6 +299,7 @@ class MidiFile {
                         $trackEvent->value = $this->parseByte($chunk, $offset);
                     } elseif ($trackEvent->type == 'programChange') {
                         $trackEvent->programNumber = $this->parseByte($chunk, $offset);
+                        // TODO: map
                     } elseif ($trackEvent->type == 'channelAftertouch') {
                         $trackEvent->amount = $this->parseByte($chunk, $offset);
                     } elseif ($trackEvent->type == 'pitchBend') {
@@ -314,6 +317,13 @@ class MidiFile {
         }
 
         return $trackEvents;
+    }
+
+    private function mapNoteFromMidi($note) {
+        $octave = (int) ($note / 12) - 1;
+        $note = $note % 12;
+
+        return $this->noteMapping[$note] . $octave;
     }
 
     private function parseVariableLengthValue($chunk, &$offset) {
