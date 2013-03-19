@@ -293,14 +293,6 @@ class MidiFile {
         }
     }
 
-    public function save($filename) {
-        file_put_contents($filename, $this->render());
-    }
-
-    public function render() {
-        return print_r($this->tracks, true);
-    }
-
     private function splitChunks($binaryMidi) {
         $chunks = array();
         $offset = 0;
@@ -527,6 +519,177 @@ class MidiFile {
 
         return $byte;
     }
+
+
+    public function save($filename) {
+        file_put_contents($filename, $this->render());
+    }
+
+    public function render() {
+        $chunks = array();
+
+        $header = pack('nnn', $this->header->type, count($this->tracks), $this->header->timeDivision);
+        $chunks[] = $header;
+
+        foreach ($this->tracks as $track) {
+            $chunks[] = $this->renderTrackChunk($track);
+        }
+
+        $binaryMidi = '';
+
+        foreach ($chunks as $chunk) {
+            $signature = $binaryMidi === '' ? 'MThd' : 'MTrk';
+
+            $binaryMidi .= $signature . pack('N', strlen($chunk));
+            $binaryMidi .= $chunk;
+        }
+
+        return $binaryMidi;
+    }
+
+    private function renderTrackChunk($track) {
+        $chunk = '';
+
+        $eventTypeMapping = array_flip($this->eventTypeMapping);
+        $metaEventTypeMapping = array_flip($this->metaEventTypeMapping);
+
+        foreach ($track->events as $trackEvent) {
+            $chunk .= $this->renderVariableLengthValue($trackEvent->deltaTime);
+
+            if ($trackEvent->type == 'meta') {
+                $eventType = 0xff;
+
+                if (array_key_exists($trackEvent->metaType, $metaEventTypeMapping)) {
+                    $metaEventType = $metaEventTypeMapping[$trackEvent->metaType];
+                } else {
+                    $this->log('Unknown meta event type "' . $trackEvent->metaType . '"');
+                    $metaEventType = 0x00; //TODO: $trackEvent->metaType = 'unknown:' . $metaEventType;
+                    $metaData = $trackEvent->data;
+                }
+
+                if ($trackEvent->metaType == 'sequenceNumber') {
+                    $metaData = pack('n', $trackEvent->number);
+                } elseif ($trackEvent->metaType == 'channelPrefix') {
+                    $metaData = pack('C', $trackEvent->channel);
+                } elseif ($trackEvent->metaType == 'endOfTrack') {
+                    $metaData = '';
+                } elseif ($trackEvent->metaType == 'setTempo') {
+                    $tempo = round(60000000 / $trackEvent->tempoBpm);
+                    $metaData = pack('N', $tempo);
+                    $metaData = substr($metaData, 1); // 3 byte only
+                } elseif ($trackEvent->metaType == 'smpteOffset') {
+                    $metaData = $trackEvent->data;
+                } elseif ($trackEvent->metaType == 'timeSignature') {
+                    $metaData = '';
+                    $metaData .= pack('C', $trackEvent->numerator);
+                    $metaData .= pack('C', log($trackEvent->denominator, 2));
+                    $metaData .= pack('C', $trackEvent->metronomeTimePerClick);
+                    $metaData .= pack('C', $trackEvent->count32ndNotesPerQuarter);
+                } elseif ($trackEvent->metaType == 'keySignature') {
+                    $metaData = $trackEvent->data;
+                } elseif ($trackEvent->metaType == 'sequencerSpecific') {
+                    $metaData = $trackEvent->data;
+                } else {
+                    $metaData = $trackEvent->text;
+                }
+
+                $chunk .= pack('C', $eventType);
+                $chunk .= pack('C', $metaEventType);
+                $chunk .= $this->renderVariableLengthValue(strlen($metaData));
+                $chunk .= $metaData;
+            } elseif ($trackEvent->type == 'sysEx' || $trackEvent->type == 'authSysEx') {
+                $eventType = $trackEvent->type == 'sysEx' ? 0xf0 : 0xf7;
+
+                $chunk .= pack('C', $eventType);
+                $chunk .= $this->renderVariableLengthValue(strlen($trackEvent->data));
+                $chunk .= $trackEvent->data;
+            } else {
+                /*
+                $eventType = $eventTypeMapping[$trackEvent->type];
+
+                $trackEvent->type = null;
+                $trackEvent->channel = $eventType & 0x0f;
+                $eventType = ($eventType & 0xf0) >> 4;
+
+                if (array_key_exists($eventType, $this->eventTypeMapping)) {
+                    $trackEvent->type = $this->eventTypeMapping[$eventType];
+
+                    if ($trackEvent->type == 'noteOff') {
+                        $trackEvent->note = $this->mapNoteFromMidi($this->parseByte($chunk, $offset));
+                        $trackEvent->velocity = $this->parseByte($chunk, $offset);
+                    } elseif ($trackEvent->type == 'noteOn') {
+                        $trackEvent->note = $this->mapNoteFromMidi($this->parseByte($chunk, $offset));
+                        $trackEvent->velocity = $this->parseByte($chunk, $offset);
+
+                        if ($trackEvent->velocity == 0) {
+                            $trackEvent->type = 'noteOff';
+                        }
+                    } elseif ($trackEvent->type == 'noteAftertouch') {
+                        $trackEvent->note = $this->mapNoteFromMidi($this->parseByte($chunk, $offset));
+                        $trackEvent->amount = $this->parseByte($chunk, $offset);
+                    } elseif ($trackEvent->type == 'controller') {
+                        $controllerType = $this->parseByte($chunk, $offset);
+
+                        if (array_key_exists($controllerType, $this->controllerTypeMapping)) {
+                            $trackEvent->controllerType = $this->controllerTypeMapping[$controllerType];
+                        } else {
+                            $this->log('Unknown controller type "' . $controllerType . '"');
+                            $trackEvent->controllerType = 'unknown:' . $controllerType;
+                        }
+
+                        $trackEvent->value = $this->parseByte($chunk, $offset);
+                    } elseif ($trackEvent->type == 'programChange') {
+                        $trackEvent->programType = $this->parseByte($chunk, $offset);
+
+                        if (array_key_exists($trackEvent->programType, $this->programTypeNames)) {
+                            $trackEvent->programTypeName = $this->programTypeNames[$trackEvent->programType];
+                        } else {
+                            $trackEvent->programTypeName = 'Unknown (' . $trackEvent->programType . ')';
+                        }
+                    } elseif ($trackEvent->type == 'channelAftertouch') {
+                        $trackEvent->amount = $this->parseByte($chunk, $offset);
+                    } elseif ($trackEvent->type == 'pitchBend') {
+                        $byte1 = $this->parseByte($chunk, $offset);
+                        $byte2 = $this->parseByte($chunk, $offset);
+                        $trackEvent->value = ($byte2 << 8) | $byte1;
+                    }
+                } else {
+                    $this->log('Unknown event type "' . $eventType . '"');
+                    $trackEvent->type = 'unknown:' . $eventType;
+                }
+                */
+            }
+
+            // TODO: Running status
+        }
+
+        return $chunk;
+    }
+
+    private function renderVariableLengthValue($value) {
+        $binaryValue = '';
+        $byteFollows = false;
+
+        while (strlen($binaryValue) < 4) {
+            $byte = $value & 0x7f;
+            $value = $value >> 7;
+
+            if ($byteFollows) {
+                $byte = $byte | 0x80;
+            }
+
+            $binaryValue = pack('C', $byte) . $binaryValue;
+
+            if ($value == 0) {
+                break;
+            }
+
+            $byteFollows = true;
+        }
+
+        return $binaryValue;
+    }
+
 
     private function log($message) {
         echo $message . PHP_EOL;
