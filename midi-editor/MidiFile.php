@@ -554,7 +554,7 @@ class MidiFile {
         $metaEventTypeMapping = array_flip($this->metaEventTypeMapping);
 
         foreach ($track->events as $trackEvent) {
-            $chunk .= $this->renderVariableLengthValue($trackEvent->deltaTime);
+            $packet = $this->renderVariableLengthValue($trackEvent->deltaTime);
 
             if ($trackEvent->type == 'meta') {
                 $eventType = 0xff;
@@ -574,7 +574,7 @@ class MidiFile {
                 } elseif ($trackEvent->metaType == 'endOfTrack') {
                     $metaData = '';
                 } elseif ($trackEvent->metaType == 'setTempo') {
-                    $tempo = round(60000000 / $trackEvent->tempoBpm);
+                    $tempo = (int) (60000000 / $trackEvent->tempoBpm);
                     $metaData = pack('N', $tempo);
                     $metaData = substr($metaData, 1); // 3 byte only
                 } elseif ($trackEvent->metaType == 'smpteOffset') {
@@ -593,17 +593,20 @@ class MidiFile {
                     $metaData = $trackEvent->text;
                 }
 
-                $chunk .= pack('C', $eventType);
-                $chunk .= pack('C', $metaEventType);
-                $chunk .= $this->renderVariableLengthValue(strlen($metaData));
-                $chunk .= $metaData;
+                $packet .= pack('C', $eventType);
+                $packet .= pack('C', $metaEventType);
+                $packet .= $this->renderVariableLengthValue(strlen($metaData));
+                $packet .= $metaData;
             } elseif ($trackEvent->type == 'sysEx' || $trackEvent->type == 'authSysEx') {
                 $eventType = $trackEvent->type == 'sysEx' ? 0xf0 : 0xf7;
 
-                $chunk .= pack('C', $eventType);
-                $chunk .= $this->renderVariableLengthValue(strlen($trackEvent->data));
-                $chunk .= $trackEvent->data;
+                $packet .= pack('C', $eventType);
+                $packet .= $this->renderVariableLengthValue(strlen($trackEvent->data));
+                $packet .= $trackEvent->data;
             } else {
+                continue;
+                // TODO: Running status
+
                 /*
                 $eventType = $eventTypeMapping[$trackEvent->type];
 
@@ -660,7 +663,7 @@ class MidiFile {
                 */
             }
 
-            // TODO: Running status
+            $chunk .= $packet;
         }
 
         return $chunk;
