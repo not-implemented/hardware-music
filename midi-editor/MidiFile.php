@@ -6,9 +6,9 @@
 * MIDI File Format Specification: http://www.sonicspot.com/guide/midifiles.html
 */
 class MidiFile {
-    private $filename = null;
-    private $header = null;
-    private $tracks = null;
+    private $filename;
+    private $header;
+    private $tracks;
 
     private $eventTypeMapping = array(
         0x8 => 'noteOff',
@@ -259,6 +259,12 @@ class MidiFile {
 
     private $noteMapping = array('C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'B', 'H');
 
+    public function __construct() {
+        $this->filename = null;
+        $this->header = (object) array('type' => 1, 'timeDivision' => 480);
+        $this->tracks = array();
+    }
+
     public function load($filename) {
         $binaryMidi = @file_get_contents($filename);
         if ($binaryMidi === false) {
@@ -273,7 +279,7 @@ class MidiFile {
     public function parse($binaryMidi) {
         $this->filename = null;
         $this->header = null;
-        $this->tracks = null;
+        $this->tracks = array();
 
         $chunks = $this->splitChunks($binaryMidi);
         $headerChunk = array_shift($chunks);
@@ -285,8 +291,6 @@ class MidiFile {
         }
 
         unset($this->header->trackCount);
-
-        $this->tracks = array();
 
         foreach ($chunks as $chunk) {
             $this->tracks[] = $this->parseTrackChunk($chunk);
