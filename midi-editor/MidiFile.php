@@ -10,6 +10,24 @@ class MidiFile {
     private $header = null;
     private $tracks = null;
 
+    private $metaEventTypeMapping = array(
+        0x00 => 'sequenceNumber',
+        0x01 => 'textEvent',
+        0x02 => 'copyrightNotice',
+        0x03 => 'trackName',
+        0x04 => 'instrumentName',
+        0x05 => 'lyrics',
+        0x06 => 'marker',
+        0x07 => 'cuePoint',
+        0x20 => 'channelPrefix',
+        0x2f => 'endOfTrack',
+        0x51 => 'setTempo',
+        0x54 => 'smpteOffset',
+        0x58 => 'timeSignature',
+        0x59 => 'keySignature',
+        0x7f => 'sequencerSpecific',
+    );
+
     public function load($filename) {
         $binaryMidi = @file_get_contents($filename);
         if ($binaryMidi === false) {
@@ -35,6 +53,8 @@ class MidiFile {
             $this->log('Track count in header "' . $this->header->trackCount . '" does not match real track count "' . count($chunks) . '"');
         }
 
+        unset($this->header->trackCount);
+
         $this->tracks = array();
 
         foreach ($chunks as $chunk) {
@@ -43,7 +63,11 @@ class MidiFile {
     }
 
     public function save($filename) {
-        file_put_contents($filename, print_r($this->tracks, true));
+        file_put_contents($filename, $this->render());
+    }
+
+    public function render() {
+        return print_r($this->tracks, true);
     }
 
     private function splitChunks($binaryMidi) {
@@ -105,7 +129,6 @@ class MidiFile {
             $trackEvent->deltaTime = $this->parseVariableLengthValue($chunk, $offset);
 
             $eventType = $this->parseByte($chunk, $offset);
-            $trackEvent->type = null;
 
             // "running status" feature:
             if ($eventType & 0x80) {
@@ -121,16 +144,50 @@ class MidiFile {
 
             if ($eventType == 0xff) {
                 $trackEvent->type = 'meta';
-                $trackEvent->metaType = $this->parseByte($chunk, $offset);
-                $metaLength = $this->parseVariableLengthValue($chunk, $offset);
-                $trackEvent->data = substr($chunk, $offset, $metaLength);
-                $offset += $metaLength;
+                $trackEvent->metaType = null;
+                $metaEventType = $this->parseByte($chunk, $offset);
+                $dataLength = $this->parseVariableLengthValue($chunk, $offset);
+                $trackEvent->data = substr($chunk, $offset, $dataLength);
+                $offset += $dataLength;
+
+                if (array_key_exists($metaEventType, $this->metaEventTypeMapping)) {
+                    $trackEvent->metaType = $this->metaEventTypeMapping[$metaEventType];
+
+                    if ($trackEvent->metaType == 'sequenceNumber') {
+                        $metaDataOffset = 0;
+                        $byte1 = $this->parseByte($trackEvent->data, $metaDataOffset);
+                        $byte2 = $this->parseByte($trackEvent->data, $metaDataOffset);
+                        $trackEvent->number = ($byte1 << 8) | $byte2;
+                        unset($trackEvent->data);
+                    } elseif ($trackEvent->metaType == 'channelPrefix') {
+                        $metaDataOffset = 0;
+                        $trackEvent->channel = $this->parseByte($trackEvent->data, $metaDataOffset);
+                        unset($trackEvent->data);
+                    } elseif ($trackEvent->metaType == 'setTempo') {
+                        $metaDataOffset = 0;
+                        $byte1 = $this->parseByte($trackEvent->data, $metaDataOffset);
+                        $byte2 = $this->parseByte($trackEvent->data, $metaDataOffset);
+                        $byte3 = $this->parseByte($trackEvent->data, $metaDataOffset);
+                        $trackEvent->tempo = ($byte1 << 16) | ($byte2 << 8) | $byte3;
+                        unset($trackEvent->data);
+                    } elseif ($trackEvent->metaType == 'smpteOffset') {
+                        $this->log('TODO: Parse meta event type "' . $trackEvent->metaType . '"');
+                    } elseif ($trackEvent->metaType == 'timeSignature') {
+                        $this->log('TODO: Parse meta event type "' . $trackEvent->metaType . '"');
+                    } elseif ($trackEvent->metaType == 'keySignature') {
+                        $this->log('TODO: Parse meta event type "' . $trackEvent->metaType . '"');
+                    }
+                } else {
+                    $this->log('Ignored unknown meta event type "' . $metaEventType . '"');
+                    $trackEvent->metaType = 'unknown:' . $metaEventType;
+                }
             } elseif ($eventType == 0xf0 || $eventType == 0xf7) {
-                $trackEvent->type = $eventType == 0xf0 ? 'sysEx' : 'sysExDivided';
+                $trackEvent->type = $eventType == 0xf0 ? 'sysEx' : 'authSysEx';
                 $dataLength = $this->parseVariableLengthValue($chunk, $offset);
                 $trackEvent->data = substr($chunk, $offset, $dataLength);
                 $offset += $dataLength;
             } else {
+                $trackEvent->type = null;
                 $trackEvent->channel = $eventType & 0x0f;
                 $eventType = ($eventType & 0xf0) >> 4;
 
@@ -162,9 +219,9 @@ class MidiFile {
                     $trackEvent->aftertouch = $this->parseByte($chunk, $offset);
                 } elseif ($eventType == 0xe) {
                     $trackEvent->type = 'pitchBend';
-                    $value1 = $this->parseByte($chunk, $offset);
-                    $value2 = $this->parseByte($chunk, $offset);
-                    $trackEvent->pitch = ($value2 << 8) | $value1;
+                    $byte1 = $this->parseByte($chunk, $offset);
+                    $byte2 = $this->parseByte($chunk, $offset);
+                    $trackEvent->pitch = ($byte2 << 8) | $byte1;
                 } else {
                     $this->log('Ignored unknown event type "' . $eventType . '"');
                 }
