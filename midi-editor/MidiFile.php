@@ -38,6 +38,63 @@ class MidiFile {
         0x7f => 'sequencerSpecific',
     );
 
+    private $controllerTypeMapping = array(
+        /*
+        0x00 => 'Bank Select',
+        0x01 => 'Modulation',
+        0x02 => 'Breath Controller',
+        0x04 => 'Foot Controller',
+        0x05 => 'Portamento Time',
+        0x06 => 'Data Entry (MSB)',
+        */
+        0x07 => 'mainVolume',
+        /*
+        0x08 => 'Balance',
+        */
+        0x0a => 'pan',
+        /*
+        0x0b => 'Expression Controller',
+        0x0c => 'Effect Control 1',
+        0x0d => 'Effect Control 2',
+        0x10 => 'General-Purpose Controller 1',
+        0x11 => 'General-Purpose Controller 2',
+        0x12 => 'General-Purpose Controller 3',
+        0x13 => 'General-Purpose Controller 4',
+        0x40 => 'Damper pedal (sustain)',
+        0x41 => 'Portamento',
+        0x42 => 'Sostenuto',
+        0x43 => 'Soft Pedal',
+        0x44 => 'Legato Footswitch',
+        0x45 => 'Hold 2',
+        0x46 => 'Sound Controller 1', // default: Timber Variation
+        0x47 => 'Sound Controller 2', // default: Timber/Harmonic Content
+        0x48 => 'Sound Controller 3', // default: Release Time
+        0x49 => 'Sound Controller 4', // default: Attack Time
+        0x4a => 'Sound Controller 5',
+        0x4b => 'Sound Controller 6',
+        0x4c => 'Sound Controller 7',
+        0x4d => 'Sound Controller 8',
+        0x4e => 'Sound Controller 9',
+        0x4f => 'Sound Controller 10',
+        0x50 => 'General-Purpose Controller 5',
+        0x51 => 'General-Purpose Controller 6',
+        0x52 => 'General-Purpose Controller 7',
+        0x53 => 'General-Purpose Controller 8',
+        0x54 => 'Portamento Control',
+        0x5b => 'Effects 1 Depth', // formerly External Effects Depth
+        0x5c => 'Effects 2 Depth', // formerly Tremolo Depth
+        0x5d => 'Effects 3 Depth', // formerly Chorus Depth
+        0x5e => 'Effects 4 Depth', // formerly Celeste Detune
+        0x5f => 'Effects 5 Depth', // formerly Phaser Depth
+        0x60 => 'Data Increment',
+        0x61 => 'Data Decrement',
+        0x62 => 'Non-Registered Parameter Number (LSB)',
+        0x63 => 'Non-Registered Parameter Number (MSB)',
+        0x64 => 'Registered Parameter Number (LSB)',
+        0x65 => 'Registered Parameter Number (MSB)',
+        */
+    );
+
     public function load($filename) {
         $binaryMidi = @file_get_contents($filename);
         if ($binaryMidi === false) {
@@ -197,7 +254,7 @@ class MidiFile {
                         $trackEvent->text = $metaData;
                     }
                 } else {
-                    $this->log('Ignored unknown meta event type "' . $metaEventType . '"');
+                    $this->log('Unknown meta event type "' . $metaEventType . '"');
                     $trackEvent->metaType = 'unknown:' . $metaEventType;
                     $trackEvent->data = $metaData;
                 }
@@ -228,7 +285,15 @@ class MidiFile {
                         $trackEvent->note = $this->parseByte($chunk, $offset);
                         $trackEvent->amount = $this->parseByte($chunk, $offset);
                     } elseif ($trackEvent->type == 'controller') {
-                        $trackEvent->controllerType = $this->parseByte($chunk, $offset);
+                        $controllerType = $this->parseByte($chunk, $offset);
+
+                        if (array_key_exists($controllerType, $this->controllerTypeMapping)) {
+                            $trackEvent->controllerType = $this->controllerTypeMapping[$controllerType];
+                        } else {
+                            $this->log('Unknown controller type "' . $controllerType . '"');
+                            $trackEvent->controllerType = 'unknown:' . $controllerType;
+                        }
+
                         $trackEvent->value = $this->parseByte($chunk, $offset);
                     } elseif ($trackEvent->type == 'programChange') {
                         $trackEvent->programNumber = $this->parseByte($chunk, $offset);
@@ -240,7 +305,7 @@ class MidiFile {
                         $trackEvent->value = ($byte2 << 8) | $byte1;
                     }
                 } else {
-                    $this->log('Ignored unknown event type "' . $eventType . '"');
+                    $this->log('Unknown event type "' . $eventType . '"');
                     $trackEvent->type = 'unknown:' . $eventType;
                 }
             }
