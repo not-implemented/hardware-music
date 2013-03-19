@@ -183,8 +183,11 @@ class MidiFile {
                         $this->log('TODO: Parse meta event type "' . $trackEvent->metaType . '"');
                         $trackEvent->data = $metaData;
                     } elseif ($trackEvent->metaType == 'timeSignature') {
-                        $this->log('TODO: Parse meta event type "' . $trackEvent->metaType . '"');
-                        $trackEvent->data = $metaData;
+                        $metaDataOffset = 0;
+                        $trackEvent->numerator = $this->parseByte($metaData, $metaDataOffset);
+                        $trackEvent->denominator = pow(2, $this->parseByte($metaData, $metaDataOffset));
+                        $trackEvent->metronomeTimePerClick = $this->parseByte($metaData, $metaDataOffset);
+                        $trackEvent->count32ndNotesPerQuarter = $this->parseByte($metaData, $metaDataOffset);
                     } elseif ($trackEvent->metaType == 'keySignature') {
                         $this->log('TODO: Parse meta event type "' . $trackEvent->metaType . '"');
                         $trackEvent->data = $metaData;
