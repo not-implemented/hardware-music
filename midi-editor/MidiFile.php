@@ -351,7 +351,7 @@ class MidiFile {
     }
 
     private function parseTrackChunk($chunk) {
-        $trackEvents = array();
+        $track = (object) array('events' => array());
         $offset = 0;
         $lastEventType = null;
 
@@ -480,10 +480,10 @@ class MidiFile {
                 }
             }
 
-            $trackEvents[] = $trackEvent;
+            $track->events[] = $trackEvent;
         }
 
-        return $trackEvents;
+        return $track;
     }
 
     private function mapNoteFromMidi($note) {
