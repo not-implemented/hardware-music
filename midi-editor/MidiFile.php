@@ -10,6 +10,16 @@ class MidiFile {
     private $header = null;
     private $tracks = null;
 
+    private $eventTypeMapping = array(
+        0x8 => 'noteOff',
+        0x9 => 'noteOn',
+        0xa => 'noteAftertouch',
+        0xb => 'controller',
+        0xc => 'programChange',
+        0xd => 'channelAftertouch',
+        0xe => 'pitchBend',
+    );
+
     private $metaEventTypeMapping = array(
         0x00 => 'sequenceNumber',
         0x01 => 'textEvent',
@@ -198,39 +208,37 @@ class MidiFile {
                 $trackEvent->channel = $eventType & 0x0f;
                 $eventType = ($eventType & 0xf0) >> 4;
 
-                if ($eventType == 0x8) {
-                    $trackEvent->type = 'noteOff';
-                    $trackEvent->note = $this->parseByte($chunk, $offset);
-                    $trackEvent->velocity = $this->parseByte($chunk, $offset);
-                } elseif ($eventType == 0x9) {
-                    $trackEvent->type = 'noteOn';
-                    $trackEvent->note = $this->parseByte($chunk, $offset);
-                    $trackEvent->velocity = $this->parseByte($chunk, $offset);
+                if (array_key_exists($eventType, $this->eventTypeMapping)) {
+                    $trackEvent->type = $this->eventTypeMapping[$eventType];
 
-                    if ($trackEvent->velocity == 0) {
-                        $trackEvent->type = 'noteOff';
+                    if ($trackEvent->type == 'noteOff') {
+                        $trackEvent->note = $this->parseByte($chunk, $offset);
+                        $trackEvent->velocity = $this->parseByte($chunk, $offset);
+                    } elseif ($trackEvent->type == 'noteOn') {
+                        $trackEvent->note = $this->parseByte($chunk, $offset);
+                        $trackEvent->velocity = $this->parseByte($chunk, $offset);
+
+                        if ($trackEvent->velocity == 0) {
+                            $trackEvent->type = 'noteOff';
+                        }
+                    } elseif ($trackEvent->type == 'noteAftertouch') {
+                        $trackEvent->note = $this->parseByte($chunk, $offset);
+                        $trackEvent->amount = $this->parseByte($chunk, $offset);
+                    } elseif ($trackEvent->type == 'controller') {
+                        $trackEvent->controllerType = $this->parseByte($chunk, $offset);
+                        $trackEvent->value = $this->parseByte($chunk, $offset);
+                    } elseif ($trackEvent->type == 'programChange') {
+                        $trackEvent->programNumber = $this->parseByte($chunk, $offset);
+                    } elseif ($trackEvent->type == 'channelAftertouch') {
+                        $trackEvent->amount = $this->parseByte($chunk, $offset);
+                    } elseif ($trackEvent->type == 'pitchBend') {
+                        $byte1 = $this->parseByte($chunk, $offset);
+                        $byte2 = $this->parseByte($chunk, $offset);
+                        $trackEvent->value = ($byte2 << 8) | $byte1;
                     }
-                } elseif ($eventType == 0xa) {
-                    $trackEvent->type = 'noteAftertouch';
-                    $trackEvent->note = $this->parseByte($chunk, $offset);
-                    $trackEvent->aftertouch = $this->parseByte($chunk, $offset);
-                } elseif ($eventType == 0xb) {
-                    $trackEvent->type = 'controller';
-                    $trackEvent->controller = $this->parseByte($chunk, $offset);
-                    $trackEvent->value = $this->parseByte($chunk, $offset);
-                } elseif ($eventType == 0xc) {
-                    $trackEvent->type = 'programChange';
-                    $trackEvent->program = $this->parseByte($chunk, $offset);
-                } elseif ($eventType == 0xd) {
-                    $trackEvent->type = 'channelAftertouch';
-                    $trackEvent->aftertouch = $this->parseByte($chunk, $offset);
-                } elseif ($eventType == 0xe) {
-                    $trackEvent->type = 'pitchBend';
-                    $byte1 = $this->parseByte($chunk, $offset);
-                    $byte2 = $this->parseByte($chunk, $offset);
-                    $trackEvent->pitch = ($byte2 << 8) | $byte1;
                 } else {
                     $this->log('Ignored unknown event type "' . $eventType . '"');
+                    $trackEvent->type = 'unknown:' . $eventType;
                 }
             }
 
