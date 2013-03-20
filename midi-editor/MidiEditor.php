@@ -51,7 +51,7 @@ class MidiEditor {
     public function printTrackInfo($midiFile) {
         foreach ($midiFile->tracks as $trackId => $track) {
             echo PHP_EOL;
-            echo 'Track ' . ($trackId + 1) . ($track->trackName !== null ? ' (' . $track->trackName . ')' : '') . ':' . PHP_EOL;
+            echo 'Track ' . $trackId . ($track->trackName !== null ? ' (' . $track->trackName . ')' : '') . ':' . PHP_EOL;
 
             if ($track->instrumentName !== null) {
                 echo '  Instrument name: ' . $track->instrumentName . PHP_EOL;
@@ -74,7 +74,12 @@ class MidiEditor {
     }
 
     public function modifyTracks($midiFile) {
+        $selectedTrackId = 1;
+
         foreach ($midiFile->tracks as $trackId => $track) {
+            if ($trackId != $selectedTrackId) {
+                unset($midiFile->tracks[$trackId]);
+            }
         }
     }
 }
