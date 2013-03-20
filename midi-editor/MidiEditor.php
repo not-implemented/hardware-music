@@ -12,6 +12,7 @@ class MidiEditor {
         $this->analyzeTracks($midiFile);
         $this->printTrackInfo($midiFile);
         $this->modifyTracks($midiFile);
+        $this->saveScannerData($midiFile, 'Ungarischer Tanz (scanner output).bin');
         $midiFile->save('Ungarischer Tanz (output).mid');
     }
 
@@ -179,5 +180,30 @@ class MidiEditor {
 
             $track->events = $trackEvents;
         }
+    }
+
+    public function saveScannerData($midiFile, $filename) {
+        file_put_contents($filename, $this->renderScannerData($midiFile));
+    }
+
+    public function renderScannerData($midiFile) {
+        $scannerData = '';
+
+        $track = reset($midiFile->tracks);
+
+        foreach ($track->events as $trackEvent) {
+            if ($trackEvent->channel != 0) {
+                continue;
+            }
+
+            if ($trackEvent->type == 'noteOn') {
+                $playingNote = $trackEvent->note;
+            } elseif ($trackEvent->type == 'noteOff') {
+                $playingNote = null;
+            } elseif ($trackEvent->type == 'meta' && $trackEvent->metaType == 'setTempo') {
+            }
+        }
+
+        return $scannerData;
     }
 }
