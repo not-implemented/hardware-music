@@ -9,6 +9,8 @@ class MidiFile {
     private $filename;
     private $header;
     private $tracks;
+    private $useNoteOffEvent;
+    private $useRunningStatus;
 
     private $eventTypeMapping = array(
         0x8 => 'noteOff',
@@ -263,6 +265,8 @@ class MidiFile {
         $this->filename = null;
         $this->header = (object) array('type' => 1, 'timeDivision' => 480);
         $this->tracks = array();
+        $this->useNoteOffEvent = true;
+        $this->useRunningStatus = true;
     }
 
     public function load($filename) {
@@ -280,6 +284,8 @@ class MidiFile {
         $this->filename = null;
         $this->header = null;
         $this->tracks = array();
+        $this->useNoteOffEvent = false;
+        $this->useRunningStatus = false;
 
         $chunks = $this->splitChunks($binaryMidi);
         $headerChunk = array_shift($chunks);
@@ -363,6 +369,8 @@ class MidiFile {
             } elseif ($lastEventType !== null) {
                 $eventType = $lastEventType;
                 $offset--;
+
+                $this->useRunningStatus = true;
             } else {
                 $this->log('No "running status" possible here');
                 $eventType = 0x80; // fix with "noteOn" on channel 0
@@ -434,6 +442,8 @@ class MidiFile {
                     if ($trackEvent->type == 'noteOff') {
                         $trackEvent->note = $this->mapNoteFromMidi($this->parseByte($chunk, $offset));
                         $trackEvent->velocity = $this->parseByte($chunk, $offset);
+
+                        $this->useNoteOffEvent = true;
                     } elseif ($trackEvent->type == 'noteOn') {
                         $trackEvent->note = $this->mapNoteFromMidi($this->parseByte($chunk, $offset));
                         $trackEvent->velocity = $this->parseByte($chunk, $offset);
@@ -558,6 +568,8 @@ class MidiFile {
         $metaEventTypeMapping = array_flip($this->metaEventTypeMapping);
         $controllerTypeMapping = array_flip($this->controllerTypeMapping);
 
+        $lastEventType = null;
+
         foreach ($track->events as $trackEvent) {
             $packet = $this->renderVariableLengthValue($trackEvent->deltaTime);
 
@@ -602,13 +614,23 @@ class MidiFile {
                 $packet .= pack('C', $metaEventType);
                 $packet .= $this->renderVariableLengthValue(strlen($metaData));
                 $packet .= $metaData;
+
+                $lastEventType = null;
             } elseif ($trackEvent->type == 'sysEx' || $trackEvent->type == 'authSysEx') {
                 $eventType = $trackEvent->type == 'sysEx' ? 0xf0 : 0xf7;
 
                 $packet .= pack('C', $eventType);
                 $packet .= $this->renderVariableLengthValue(strlen($trackEvent->data));
                 $packet .= $trackEvent->data;
+
+                $lastEventType = null;
             } else {
+                if (!$this->useNoteOffEvent && $trackEvent->type == 'noteOff') {
+                    $trackEvent = clone $trackEvent;
+                    $trackEvent->type = 'noteOn';
+                    $trackEvent->velocity = 0;
+                }
+
                 if (array_key_exists($trackEvent->type, $eventTypeMapping)) {
                     $eventType = $eventTypeMapping[$trackEvent->type];
                 } else {
@@ -616,9 +638,20 @@ class MidiFile {
                     $eventType = 0x8; // TODO: $trackEvent->type = 'unknown:' . $eventType;
                 }
 
-                // TODO: Running status and noteOff -> noteOn change
+                $eventType = ($eventType << 4) | $trackEvent->channel;
+                $skipEventType = false;
 
-                $packet .= pack('C', ($eventType << 4) | $trackEvent->channel);
+                if ($this->useRunningStatus && $lastEventType !== null) {
+                    if ($eventType === $lastEventType) {
+                        $skipEventType = true;
+                    }
+                }
+
+                if (!$skipEventType) {
+                    $packet .= pack('C', $eventType);
+                }
+
+                $lastEventType = $eventType;
 
                 if ($trackEvent->type == 'noteOff') {
                     $packet .= pack('C', $this->mapNoteToMidi($trackEvent->note));
