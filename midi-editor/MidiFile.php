@@ -492,7 +492,7 @@ class MidiFile {
         return $track;
     }
 
-    private function mapNoteFromMidi($note) {
+    public function mapNoteFromMidi($note) {
         $octave = (int) ($note / 12) - 1;
         $note = $note % 12;
 
@@ -687,7 +687,7 @@ class MidiFile {
         return $chunk;
     }
 
-    private function mapNoteToMidi($note) {
+    public function mapNoteToMidi($note) {
         $noteMapping = array_flip($this->noteMapping);
 
         if (!preg_match('/^([CDEFGABH#]+)([\-\d]+)$/', $note, $matches)) {

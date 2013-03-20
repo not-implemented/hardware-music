@@ -75,11 +75,105 @@ class MidiEditor {
 
     public function modifyTracks($midiFile) {
         $selectedTrackId = 1;
+        $selectedProgramType = 40;
+        $selectedVelocity = 127;
+        $highestNote = $midiFile->mapNoteToMidi('E6');
 
+        // select track:
         foreach ($midiFile->tracks as $trackId => $track) {
             if ($trackId != $selectedTrackId) {
                 unset($midiFile->tracks[$trackId]);
             }
+        }
+
+        // set programType, discard unknown events:
+        foreach ($midiFile->tracks as $track) {
+            $trackEvents = array();
+
+            $programTypeSet = array();
+            $playingNote = array();
+            $deltaTimeRest = 0;
+
+            foreach ($track->events as $trackEvent) {
+                $trackEvent->deltaTime += $deltaTimeRest;
+                $deltaTimeRest = 0;
+
+                // put all notes into one channel for now:
+                $trackEvent->channel = 0;
+
+                // transpose high notes down:
+                if ($trackEvent->type == 'noteOn' || $trackEvent->type == 'noteOff') {
+                    $currentNote = $midiFile->mapNoteToMidi($trackEvent->note);
+
+                    while ($currentNote > $highestNote) {
+                        $currentNote -= 12;
+                    }
+
+                    $trackEvent->note = $midiFile->mapNoteFromMidi($currentNote);
+                }
+
+                if ($trackEvent->type == 'noteOn') {
+                    // insert programChange event if not present:
+                    if (!isset($programTypeSet[$trackEvent->channel])) {
+                        $trackEvents[] = (object) array(
+                            'deltaTime' => 0,
+                            'type' => 'programChange',
+                            'channel' => $trackEvent->channel,
+                            'programType' => $selectedProgramType,
+                        );
+                    }
+
+                    if (!empty($playingNote[$trackEvent->channel])) {
+                        $playingChannelNote = $playingNote[$trackEvent->channel];
+
+                        if ($playingChannelNote != $trackEvent->note) {
+                            if ($trackEvent->deltaTime == 0) {
+                                if ($midiFile->mapNoteToMidi($playingChannelNote) > $midiFile->mapNoteToMidi($trackEvent->note)) {
+                                    continue;
+                                } else {
+                                    // TODO: Use a reference to playing note:
+                                    array_pop($trackEvents);
+                                }
+                            } else {
+                                // insert noteOff event to play only one note at a time:
+                                $trackEvents[] = (object) array(
+                                    'deltaTime' => $trackEvent->deltaTime,
+                                    'type' => 'noteOff',
+                                    'channel' => $trackEvent->channel,
+                                    'note' => $playingChannelNote,
+                                    'velocity' => 0,
+                                );
+
+                                $trackEvent->deltaTime = 0;
+                            }
+                        }
+                    }
+
+                    $playingNote[$trackEvent->channel] = $trackEvent->note;
+
+                    $trackEvent->velocity = $selectedVelocity;
+                } elseif ($trackEvent->type == 'noteOff') {
+                    if (empty($playingNote[$trackEvent->channel]) || $playingNote[$trackEvent->channel] !== $trackEvent->note) {
+                        $deltaTimeRest += $trackEvent->deltaTime;
+                        continue; // discard useless noteOff events
+                    }
+
+                    $playingNote[$trackEvent->channel] = null;
+
+                    $trackEvent->velocity = 0;
+                } elseif ($trackEvent->type == 'programChange') {
+                    $trackEvent->programType = $selectedProgramType;
+                    $programTypeSet[$trackEvent->channel] = true;
+                } elseif ($trackEvent->type == 'meta' && $trackEvent->metaType == 'setTempo') {
+                } else {
+                    // discard all other events:
+                    continue;
+                }
+
+                $trackEvents[] = $trackEvent;
+            }
+
+            $track->events = $trackEvents;
         }
     }
 }
