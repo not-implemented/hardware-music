@@ -269,6 +269,16 @@ class MidiFile {
         $this->useRunningStatus = true;
     }
 
+    public function getProgramTypeName($programType) {
+        if (array_key_exists($programType, $this->programTypeNames)) {
+            $programTypeName = $this->programTypeNames[$programType];
+        } else {
+            $programTypeName = 'Unknown (' . $programType . ')';
+        }
+
+        return $programTypeName;
+    }
+
     public function load($filename) {
         $binaryMidi = @file_get_contents($filename);
         if ($binaryMidi === false) {
@@ -467,12 +477,6 @@ class MidiFile {
                         $trackEvent->value = $this->parseByte($chunk, $offset);
                     } elseif ($trackEvent->type == 'programChange') {
                         $trackEvent->programType = $this->parseByte($chunk, $offset);
-
-                        if (array_key_exists($trackEvent->programType, $this->programTypeNames)) {
-                            $trackEvent->programTypeName = $this->programTypeNames[$trackEvent->programType];
-                        } else {
-                            $trackEvent->programTypeName = 'Unknown (' . $trackEvent->programType . ')';
-                        }
                     } elseif ($trackEvent->type == 'channelAftertouch') {
                         $trackEvent->amount = $this->parseByte($chunk, $offset);
                     } elseif ($trackEvent->type == 'pitchBend') {
