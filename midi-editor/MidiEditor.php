@@ -86,17 +86,16 @@ class MidiEditor {
             }
         }
 
-        // set programType, discard unknown events:
         foreach ($midiFile->tracks as $track) {
             $trackEvents = array();
 
-            $programTypeSet = array();
+            $deltaTimeCarryover = 0;
             $playingNote = array();
-            $deltaTimeRest = 0;
+            $programTypeSet = array();
 
             foreach ($track->events as $trackEvent) {
-                $trackEvent->deltaTime += $deltaTimeRest;
-                $deltaTimeRest = 0;
+                $trackEvent->deltaTime += $deltaTimeCarryover;
+                $deltaTimeCarryover = 0;
 
                 // put all notes into one channel for now:
                 $trackEvent->channel = 0;
@@ -126,10 +125,14 @@ class MidiEditor {
                     if (!empty($playingNote[$trackEvent->channel])) {
                         $playingChannelNote = $playingNote[$trackEvent->channel];
 
-                        if ($playingChannelNote != $trackEvent->note) {
+                        if ($playingChannelNote == $trackEvent->note) {
+                            $deltaTimeCarryover += $trackEvent->deltaTime;
+                            continue; // discard when same note is already playing
+                        } else {
                             if ($trackEvent->deltaTime == 0) {
+                                // keep highest note when both are played at the same time:
                                 if ($midiFile->mapNoteToMidi($playingChannelNote) > $midiFile->mapNoteToMidi($trackEvent->note)) {
-                                    continue;
+                                    continue; // discard current note (and keep already playing note)
                                 } else {
                                     // TODO: Use a reference to playing note:
                                     array_pop($trackEvents);
@@ -154,8 +157,8 @@ class MidiEditor {
                     $trackEvent->velocity = $selectedVelocity;
                 } elseif ($trackEvent->type == 'noteOff') {
                     if (empty($playingNote[$trackEvent->channel]) || $playingNote[$trackEvent->channel] !== $trackEvent->note) {
-                        $deltaTimeRest += $trackEvent->deltaTime;
-                        continue; // discard useless noteOff events
+                        $deltaTimeCarryover += $trackEvent->deltaTime;
+                        continue; // discard when this note is not playing
                     }
 
                     $playingNote[$trackEvent->channel] = null;
@@ -165,9 +168,10 @@ class MidiEditor {
                     $trackEvent->programType = $selectedProgramType;
                     $programTypeSet[$trackEvent->channel] = true;
                 } elseif ($trackEvent->type == 'meta' && $trackEvent->metaType == 'setTempo') {
+                    // keep tempo changes
                 } else {
-                    // discard all other events:
-                    continue;
+                    $deltaTimeCarryover += $trackEvent->deltaTime;
+                    continue; // discard all other events
                 }
 
                 $trackEvents[] = $trackEvent;
