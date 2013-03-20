@@ -556,6 +556,7 @@ class MidiFile {
 
         $eventTypeMapping = array_flip($this->eventTypeMapping);
         $metaEventTypeMapping = array_flip($this->metaEventTypeMapping);
+        $controllerTypeMapping = array_flip($this->controllerTypeMapping);
 
         foreach ($track->events as $trackEvent) {
             $packet = $this->renderVariableLengthValue($trackEvent->deltaTime);
@@ -608,69 +609,68 @@ class MidiFile {
                 $packet .= $this->renderVariableLengthValue(strlen($trackEvent->data));
                 $packet .= $trackEvent->data;
             } else {
-                continue;
-                // TODO: Running status
-
-                /*
-                $eventType = $eventTypeMapping[$trackEvent->type];
-
-                $trackEvent->type = null;
-                $trackEvent->channel = $eventType & 0x0f;
-                $eventType = ($eventType & 0xf0) >> 4;
-
-                if (array_key_exists($eventType, $this->eventTypeMapping)) {
-                    $trackEvent->type = $this->eventTypeMapping[$eventType];
-
-                    if ($trackEvent->type == 'noteOff') {
-                        $trackEvent->note = $this->mapNoteFromMidi($this->parseByte($chunk, $offset));
-                        $trackEvent->velocity = $this->parseByte($chunk, $offset);
-                    } elseif ($trackEvent->type == 'noteOn') {
-                        $trackEvent->note = $this->mapNoteFromMidi($this->parseByte($chunk, $offset));
-                        $trackEvent->velocity = $this->parseByte($chunk, $offset);
-
-                        if ($trackEvent->velocity == 0) {
-                            $trackEvent->type = 'noteOff';
-                        }
-                    } elseif ($trackEvent->type == 'noteAftertouch') {
-                        $trackEvent->note = $this->mapNoteFromMidi($this->parseByte($chunk, $offset));
-                        $trackEvent->amount = $this->parseByte($chunk, $offset);
-                    } elseif ($trackEvent->type == 'controller') {
-                        $controllerType = $this->parseByte($chunk, $offset);
-
-                        if (array_key_exists($controllerType, $this->controllerTypeMapping)) {
-                            $trackEvent->controllerType = $this->controllerTypeMapping[$controllerType];
-                        } else {
-                            $this->log('Unknown controller type "' . $controllerType . '"');
-                            $trackEvent->controllerType = 'unknown:' . $controllerType;
-                        }
-
-                        $trackEvent->value = $this->parseByte($chunk, $offset);
-                    } elseif ($trackEvent->type == 'programChange') {
-                        $trackEvent->programType = $this->parseByte($chunk, $offset);
-
-                        if (array_key_exists($trackEvent->programType, $this->programTypeNames)) {
-                            $trackEvent->programTypeName = $this->programTypeNames[$trackEvent->programType];
-                        } else {
-                            $trackEvent->programTypeName = 'Unknown (' . $trackEvent->programType . ')';
-                        }
-                    } elseif ($trackEvent->type == 'channelAftertouch') {
-                        $trackEvent->amount = $this->parseByte($chunk, $offset);
-                    } elseif ($trackEvent->type == 'pitchBend') {
-                        $byte1 = $this->parseByte($chunk, $offset);
-                        $byte2 = $this->parseByte($chunk, $offset);
-                        $trackEvent->value = ($byte2 << 8) | $byte1;
-                    }
+                if (array_key_exists($trackEvent->type, $eventTypeMapping)) {
+                    $eventType = $eventTypeMapping[$trackEvent->type];
                 } else {
-                    $this->log('Unknown event type "' . $eventType . '"');
-                    $trackEvent->type = 'unknown:' . $eventType;
+                    $this->log('Unknown event type "' . $trackEvent->type . '"');
+                    $eventType = 0x8; // TODO: $trackEvent->type = 'unknown:' . $eventType;
                 }
-                */
+
+                // TODO: Running status and noteOff -> noteOn change
+
+                $packet .= pack('C', ($eventType << 4) | $trackEvent->channel);
+
+                if ($trackEvent->type == 'noteOff') {
+                    $packet .= pack('C', $this->mapNoteToMidi($trackEvent->note));
+                    $packet .= pack('C', $trackEvent->velocity);
+                } elseif ($trackEvent->type == 'noteOn') {
+                    $packet .= pack('C', $this->mapNoteToMidi($trackEvent->note));
+                    $packet .= pack('C', $trackEvent->velocity);
+                } elseif ($trackEvent->type == 'noteAftertouch') {
+                    $packet .= pack('C', $this->mapNoteToMidi($trackEvent->note));
+                    $packet .= pack('C', $trackEvent->amount);
+                } elseif ($trackEvent->type == 'controller') {
+                    if (array_key_exists($trackEvent->controllerType, $controllerTypeMapping)) {
+                        $controllerType = $controllerTypeMapping[$trackEvent->controllerType];
+                    } else {
+                        $this->log('Unknown controller type "' . $trackEvent->controllerType . '"');
+                        $controllerType = 0x00; // TODO: $trackEvent->controllerType = 'unknown:' . $controllerType;
+                    }
+
+                    $packet .= pack('C', $controllerType);
+                    $packet .= pack('C', $trackEvent->value);
+                } elseif ($trackEvent->type == 'programChange') {
+                    $packet .= pack('C', $trackEvent->programType);
+                } elseif ($trackEvent->type == 'channelAftertouch') {
+                    $packet .= pack('C', $trackEvent->amount);
+                } elseif ($trackEvent->type == 'pitchBend') {
+                    $packet .= pack('v', $trackEvent->value);
+                }
             }
 
             $chunk .= $packet;
         }
 
         return $chunk;
+    }
+
+    private function mapNoteToMidi($note) {
+        $noteMapping = array_flip($this->noteMapping);
+
+        if (!preg_match('/^([CDEFGABH#]+)([\-\d]+)$/', $note, $matches)) {
+            $this->log('Invalid note "' . $note . '"');
+            return 0;
+        }
+
+        if (!array_key_exists($matches[1], $noteMapping)) {
+            $this->log('Invalid note name "' . $note . '"');
+            return 0;
+        }
+
+        $note = $noteMapping[$matches[1]];
+        $octave = (int) $matches[2];
+
+        return ($octave + 1) * 12 + $note;
     }
 
     private function renderVariableLengthValue($value) {
