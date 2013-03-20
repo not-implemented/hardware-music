@@ -6,11 +6,10 @@
 * MIDI File Format Specification: http://www.sonicspot.com/guide/midifiles.html
 */
 class MidiFile {
-    private $filename;
-    private $header;
-    private $tracks;
-    private $useNoteOffEvent;
-    private $useRunningStatus;
+    public $header;
+    public $tracks;
+    public $useNoteOffEvent;
+    public $useRunningStatus;
 
     private $eventTypeMapping = array(
         0x8 => 'noteOff',
@@ -262,7 +261,6 @@ class MidiFile {
     private $noteMapping = array('C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'B', 'H');
 
     public function __construct() {
-        $this->filename = null;
         $this->header = (object) array('type' => 1, 'timeDivision' => 480);
         $this->tracks = array();
         $this->useNoteOffEvent = true;
@@ -286,12 +284,9 @@ class MidiFile {
         }
 
         $this->parse($binaryMidi);
-
-        $this->filename = $filename;
     }
 
     public function parse($binaryMidi) {
-        $this->filename = null;
         $this->header = null;
         $this->tracks = array();
         $this->useNoteOffEvent = false;
