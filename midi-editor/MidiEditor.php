@@ -126,17 +126,16 @@ class MidiEditor {
                     if (!empty($playingNote[$trackEvent->channel])) {
                         $playingChannelNote = $playingNote[$trackEvent->channel];
 
-                        if ($playingChannelNote == $trackEvent->note) {
+                        if ($playingChannelNote->note == $trackEvent->note) {
                             $deltaTimeCarryover += $trackEvent->deltaTime;
                             continue; // discard when same note is already playing
                         } else {
                             if ($trackEvent->deltaTime == 0) {
                                 // keep highest note when both are played at the same time:
-                                if ($midiFile->mapNoteToMidi($playingChannelNote) > $midiFile->mapNoteToMidi($trackEvent->note)) {
+                                if ($midiFile->mapNoteToMidi($playingChannelNote->note) > $midiFile->mapNoteToMidi($trackEvent->note)) {
                                     continue; // discard current note (and keep already playing note)
                                 } else {
-                                    // TODO: Use a reference to playing note:
-                                    array_pop($trackEvents);
+                                    $this->removeObjectFromArray($playingChannelNote, $trackEvents);
                                 }
                             } else {
                                 // insert noteOff event to play only one note at a time:
@@ -144,7 +143,7 @@ class MidiEditor {
                                     'deltaTime' => $trackEvent->deltaTime,
                                     'type' => 'noteOff',
                                     'channel' => $trackEvent->channel,
-                                    'note' => $playingChannelNote,
+                                    'note' => $playingChannelNote->note,
                                     'velocity' => 0,
                                 );
 
@@ -153,11 +152,11 @@ class MidiEditor {
                         }
                     }
 
-                    $playingNote[$trackEvent->channel] = $trackEvent->note;
+                    $playingNote[$trackEvent->channel] = $trackEvent;
 
                     $trackEvent->velocity = $selectedVelocity;
                 } elseif ($trackEvent->type == 'noteOff') {
-                    if (empty($playingNote[$trackEvent->channel]) || $playingNote[$trackEvent->channel] !== $trackEvent->note) {
+                    if (empty($playingNote[$trackEvent->channel]) || $playingNote[$trackEvent->channel]->note !== $trackEvent->note) {
                         $deltaTimeCarryover += $trackEvent->deltaTime;
                         continue; // discard when this note is not playing
                     }
@@ -179,6 +178,13 @@ class MidiEditor {
             }
 
             $track->events = $trackEvents;
+        }
+    }
+
+    private function removeObjectFromArray($object, &$array) {
+        $key = array_search($object, $array, true);
+        if ($key !== false) {
+            unset($array[$key]);
         }
     }
 
