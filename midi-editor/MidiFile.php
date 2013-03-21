@@ -355,6 +355,8 @@ class MidiFile {
             $this->log('Invalid MIDI format type "' . $header->type . '"');
         }
 
+        // TODO: Handle timeDivision in ticks per frame / frames per second
+
         return $header;
     }
 
@@ -580,7 +582,7 @@ class MidiFile {
                     $metaEventType = $metaEventTypeMapping[$trackEvent->metaType];
                 } else {
                     $this->log('Unknown meta event type "' . $trackEvent->metaType . '"');
-                    $metaEventType = 0x00; //TODO: $trackEvent->metaType = 'unknown:' . $metaEventType;
+                    $metaEventType = 0x00; // TODO: $trackEvent->metaType = 'unknown:' . $metaEventType;
                     $metaData = $trackEvent->data;
                 }
 

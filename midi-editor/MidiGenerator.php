@@ -96,7 +96,7 @@ class MidiGenerator {
             $numerator = (int) $matches[2];
             $denominator = (int) $matches[3];
 
-            // timeDivision defines the number of ticks per quarter note (so multiply by 4):
+            // timeDivision defines the number of ticks per beat (quarter note) - so multiply by 4:
             $deltaTime = ($numerator / $denominator) * 4 * $midiFile->header->timeDivision;
 
             if ($note == 'P') {
