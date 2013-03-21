@@ -56,9 +56,10 @@ class MidiGenerator {
         $selectedProgramType = 40;
 
         $midiFile = new MidiFile();
-        $track = (object) array('events' => array());
-
+        $midiFile->header->type = 0;
         $midiFile->header->timeDivision = 480;
+
+        $track = (object) array('events' => array());
 
         $track->events[] = (object) array(
             'deltaTime' => 0,

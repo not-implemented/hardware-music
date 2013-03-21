@@ -126,6 +126,7 @@ class MidiEditor {
                         );
                     }
 
+                    // handle simultaneously playing notes:
                     if (!empty($playingNote[$trackEvent->channel])) {
                         $playingChannelNote = $playingNote[$trackEvent->channel];
 
