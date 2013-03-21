@@ -690,7 +690,7 @@ class MidiFile {
     public function mapNoteToMidi($note) {
         $noteMapping = array_flip($this->noteMapping);
 
-        if (!preg_match('/^([CDEFGABH#]+)([\-\d]+)$/', $note, $matches)) {
+        if (!preg_match('/^([CDEFGABH]#?)(\-?\d+)$/', $note, $matches)) {
             $this->log('Invalid note "' . $note . '"');
             return 0;
         }
