@@ -170,8 +170,14 @@ class MidiEditor {
                 } elseif ($trackEvent->type == 'programChange') {
                     $trackEvent->programType = $selectedProgramType;
                     $programTypeSet[$trackEvent->channel] = true;
+                } elseif ($trackEvent->type == 'meta' && $trackEvent->metaType == 'timeSignature') {
+                    // keep time signature
+                } elseif ($trackEvent->type == 'meta' && $trackEvent->metaType == 'trackName') {
+                    // keep track name
                 } elseif ($trackEvent->type == 'meta' && $trackEvent->metaType == 'setTempo') {
                     // keep tempo changes
+                } elseif ($trackEvent->type == 'meta' && $trackEvent->metaType == 'endOfTrack') {
+                    // keep end of track marker
                 } else {
                     $deltaTimeCarryover += $trackEvent->deltaTime;
                     continue; // discard all other events
