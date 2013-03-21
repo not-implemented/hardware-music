@@ -87,6 +87,9 @@ class MidiEditor {
             }
         }
 
+        // we have a "one-track-MIDI" now:
+        $midiFile->header->type = 0;
+
         foreach ($midiFile->tracks as $track) {
             $trackEvents = array();
 
