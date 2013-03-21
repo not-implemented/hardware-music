@@ -9,17 +9,17 @@ class MidiGenerator {
     public function main() {
         // Sieben Tage lang:
         $notes = array(
-            'D5:1/4', 'D5:1/4', 'H4:1/4', 'C5:1/2', 'A4:1/2',
-            'A4:1/4', 'D5:1/4', 'D5:1/4', 'C5:1/4', 'H4:1/4',
-            'D5:1/4', 'D5:1/8', 'C5:1/8', 'H4:1/4', 'C5:1/2', 'A4:1/2',
-            'H4:1/4', 'G4:1/4', 'A4:1/1',
+            'D5:1/8', 'D5:1/8', 'H4:1/8', 'C5:1/4', 'A4:1/4',
+            'A4:1/8', 'D5:1/8', 'D5:1/8', 'C5:1/8', 'H4:1/8',
+            'D5:1/8', 'D5:1/16', 'C5:1/16', 'H4:1/8', 'C5:1/4', 'A4:1/4',
+            'H4:1/8', 'G4:1/8', 'A4:1/2',
 
-            'A4:1/4', 'C5:1/4', 'D5:1/4', 'E5:1/2', 'E5:1/2', 'F5:1/4', 'D5:1/4', 'E5:1/1',
+            'A4:1/8', 'C5:1/8', 'D5:1/8', 'E5:1/4', 'E5:1/4', 'F5:1/8', 'D5:1/8', 'E5:1/2',
 
-            'D5:1/4', 'D5:1/8', 'C5:1/8', 'H4:1/4', 'C5:1/2', 'A4:1/2',
-            'A4:1/4', 'D5:1/4', 'D5:1/4', 'C5:1/4', 'H4:1/4',
-            'D5:1/4', 'D5:1/8', 'C5:1/8', 'H4:1/4', 'C5:1/2', 'A4:1/2',
-            'H4:1/4', 'G4:1/4', 'A4:1/1',
+            'D5:1/8', 'D5:1/16', 'C5:1/16', 'H4:1/8', 'C5:1/4', 'A4:1/4',
+            'A4:1/8', 'D5:1/8', 'D5:1/8', 'C5:1/8', 'H4:1/8',
+            'D5:1/8', 'D5:1/16', 'C5:1/16', 'H4:1/8', 'C5:1/4', 'A4:1/4',
+            'H4:1/8', 'G4:1/8', 'A4:1/2',
         );
 
         $midiFile = $this->convertNotesToMidi($notes);
@@ -52,7 +52,7 @@ class MidiGenerator {
             'deltaTime' => 0,
             'type' => 'meta',
             'metaType' => 'timeSignature',
-            'numerator' => 2,
+            'numerator' => 4,
             'denominator' => 4,
             'metronomeTimePerClick' => 24,
             'count32ndNotesPerQuarter' => 8,
@@ -84,7 +84,8 @@ class MidiGenerator {
             $numerator = (int) $matches[2];
             $denominator = (int) $matches[3];
 
-            $deltaTime = ($numerator / $denominator) * $midiFile->header->timeDivision;
+            // timeDivision defines the number of ticks per quarter note (so multiply by 4):
+            $deltaTime = ($numerator / $denominator) * 4 * $midiFile->header->timeDivision;
 
             if ($note == 'P') {
                 $deltaTimeCarryover += $deltaTime;
