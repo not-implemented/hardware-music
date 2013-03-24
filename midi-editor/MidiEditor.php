@@ -1,24 +1,6 @@
 <?php
 
-require_once 'MidiFile.php';
-
-$midiEditor = new MidiEditor();
-$midiEditor->main();
-
 class MidiEditor {
-    public function main() {
-        $midiFile = new MidiFile();
-        $midiFile->load('Ungarischer Tanz.mid');
-        $this->analyzeTracks($midiFile);
-        $this->printTrackInfo($midiFile);
-        $this->modifyTracks($midiFile);
-        $this->saveScannerData($midiFile, 'Ungarischer Tanz (scanner output).bin');
-        $midiFile->save('Ungarischer Tanz (output).mid');
-        foreach ($midiFile->logMessages as $logMessage) {
-            echo $logMessage . PHP_EOL;
-        }
-    }
-
     public function analyzeTracks($midiFile) {
         foreach ($midiFile->tracks as $track) {
             $track->trackName = null;
@@ -47,31 +29,6 @@ class MidiEditor {
                         $track->noteCountPerChannel[$trackEvent->channel] = 0;
                     }
                     $track->noteCountPerChannel[$trackEvent->channel]++;
-                }
-            }
-        }
-    }
-
-    public function printTrackInfo($midiFile) {
-        foreach ($midiFile->tracks as $trackId => $track) {
-            echo PHP_EOL;
-            echo 'Track ' . $trackId . ($track->trackName !== null ? ' (' . $track->trackName . ')' : '') . ':' . PHP_EOL;
-
-            if ($track->instrumentName !== null) {
-                echo '  Instrument name: ' . $track->instrumentName . PHP_EOL;
-            }
-            if ($track->copyrightNotice !== null) {
-                echo '  Copyright: ' . $track->copyrightNotice . PHP_EOL;
-            }
-
-            if ($track->programTypes !== null) {
-                echo '  Used instruments: ' . implode(', ', $track->programTypes) . PHP_EOL;
-            }
-
-            if (count($track->noteCountPerChannel) > 0) {
-                echo '  Note counts:' . PHP_EOL;
-                foreach ($track->noteCountPerChannel as $channel => $noteCount) {
-                    echo '    Channel ' . $channel . ': ' . $noteCount . ' notes' . PHP_EOL;
                 }
             }
         }
@@ -199,30 +156,5 @@ class MidiEditor {
         if ($key !== false) {
             unset($array[$key]);
         }
-    }
-
-    public function saveScannerData($midiFile, $filename) {
-        file_put_contents($filename, $this->renderScannerData($midiFile));
-    }
-
-    public function renderScannerData($midiFile) {
-        $scannerData = '';
-
-        $track = reset($midiFile->tracks);
-
-        foreach ($track->events as $trackEvent) {
-            if ($trackEvent->channel != 0) {
-                continue;
-            }
-
-            if ($trackEvent->type == 'noteOn') {
-                $playingNote = $trackEvent->note;
-            } elseif ($trackEvent->type == 'noteOff') {
-                $playingNote = null;
-            } elseif ($trackEvent->type == 'meta' && $trackEvent->metaType == 'setTempo') {
-            }
-        }
-
-        return $scannerData;
     }
 }
