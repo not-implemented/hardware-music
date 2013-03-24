@@ -14,11 +14,14 @@ class MidiEditorSample {
 
         $midiFile = new MidiFile();
         $midiFile->load('Ungarischer Tanz.mid');
+
         $midiEditor->analyzeTracks($midiFile);
         $this->printTrackInfo($midiFile);
         $midiEditor->modifyTracks($midiFile);
+
         $scannerRenderer->save($midiFile, 'Ungarischer Tanz (scanner output).bin');
         $midiFile->save('Ungarischer Tanz (output).mid');
+
         foreach ($midiFile->logMessages as $logMessage) {
             echo $logMessage . PHP_EOL;
         }

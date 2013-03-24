@@ -7,6 +7,7 @@ class ScannerRenderer {
 
     public function render($midiFile) {
         $scannerData = '';
+        $playingNote = null;
 
         $track = reset($midiFile->tracks);
 
