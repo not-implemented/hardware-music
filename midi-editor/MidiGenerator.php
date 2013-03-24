@@ -36,6 +36,9 @@ class MidiGenerator {
 
         $midiFile = $this->convertNotesToMidi($notes);
         $midiFile->save('Sieben Tage lang.mid');
+        foreach ($midiFile->logMessages as $logMessage) {
+            echo $logMessage . PHP_EOL;
+        }
 
         // Tonleiter:
         $notes = array(
@@ -49,6 +52,9 @@ class MidiGenerator {
 
         $midiFile = $this->convertNotesToMidi($notes);
         $midiFile->save('Tonleiter.mid');
+        foreach ($midiFile->logMessages as $logMessage) {
+            echo $logMessage . PHP_EOL;
+        }
     }
 
     public function convertNotesToMidi($notes) {

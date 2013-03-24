@@ -14,6 +14,9 @@ class MidiEditor {
         $this->modifyTracks($midiFile);
         $this->saveScannerData($midiFile, 'Ungarischer Tanz (scanner output).bin');
         $midiFile->save('Ungarischer Tanz (output).mid');
+        foreach ($midiFile->logMessages as $logMessage) {
+            echo $logMessage . PHP_EOL;
+        }
     }
 
     public function analyzeTracks($midiFile) {

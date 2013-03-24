@@ -10,6 +10,7 @@ class MidiFile {
     public $tracks;
     public $useNoteOffEvent;
     public $useRunningStatus;
+    public $logMessages;
 
     private $eventTypeMapping = array(
         0x8 => 'noteOff',
@@ -265,6 +266,7 @@ class MidiFile {
         $this->tracks = array();
         $this->useNoteOffEvent = true;
         $this->useRunningStatus = true;
+        $this->logMessages = array();
     }
 
     public function getProgramTypeName($programType) {
@@ -734,6 +736,6 @@ class MidiFile {
 
 
     private function log($message) {
-        echo $message . PHP_EOL;
+        $this->logMessages[] = $message;
     }
 }
