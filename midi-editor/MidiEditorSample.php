@@ -9,22 +9,24 @@ $midiEditorSample->main();
 
 class MidiEditorSample {
     public function main() {
-        $midiEditor = new MidiEditor();
-        $scannerRenderer = new ScannerRenderer();
-
         $midiFile = new MidiFile();
         $midiFile->load('Ungarischer Tanz.mid');
 
+        $midiEditor = new MidiEditor();
         $midiEditor->analyzeTracks($midiFile);
         $this->printTrackInfo($midiFile);
         $midiEditor->modifyTracks($midiFile);
 
-        $scannerRenderer->save($midiFile, 'Ungarischer Tanz (scanner output).bin');
         $midiFile->save('Ungarischer Tanz (output).mid');
 
         foreach ($midiFile->logMessages as $logMessage) {
             echo $logMessage . PHP_EOL;
         }
+
+        $scannerRenderer = new ScannerRenderer();
+        $scannerRenderer->selectedTrackId = 1;
+        $scannerRenderer->selectedChannel = 0;
+        $scannerRenderer->save('Ungarischer Tanz (scanner output).bin', $midiFile);
     }
 
     public function printTrackInfo($midiFile) {
