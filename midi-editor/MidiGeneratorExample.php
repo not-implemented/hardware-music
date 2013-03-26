@@ -3,10 +3,10 @@
 require_once 'MidiFile.php';
 require_once 'MidiGenerator.php';
 
-$midiGeneratorSample = new MidiGeneratorSample();
-$midiGeneratorSample->main();
+$midiGeneratorExample = new MidiGeneratorExample();
+$midiGeneratorExample->main();
 
-class MidiGeneratorSample {
+class MidiGeneratorExample {
     public function main() {
         $midiGenerator = new MidiGenerator();
         $midiGenerator->programType = 40;

@@ -4,10 +4,10 @@ require_once 'MidiFile.php';
 require_once 'MidiEditor.php';
 require_once 'ScannerRenderer.php';
 
-$midiEditorSample = new MidiEditorSample();
-$midiEditorSample->main();
+$midiEditorExample = new MidiEditorExample();
+$midiEditorExample->main();
 
-class MidiEditorSample {
+class MidiEditorExample {
     public function main() {
         $midiFile = new MidiFile();
         $midiFile->load('Ungarischer Tanz.mid');
