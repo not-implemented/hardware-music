@@ -1,6 +1,8 @@
 <?php
 
 class ScannerRenderer extends NoteRenderer {
+    public $microsecondsOverhead = 76;
+
     public function render($midiFile) {
         $scannerData = '';
 
@@ -19,7 +21,7 @@ class ScannerRenderer extends NoteRenderer {
 
             $pause = $note->pause;
             $steps = round($note->duration * $frequency / 1000000);
-            $delay = round(1000000 / $frequency);
+            $delay = max(round(1000000 / $frequency) - $this->microsecondsOverhead, 0);
 
             $scannerData .= '{' . $pause .', ' . $steps . ', ' . $delay .', ' . ($direction == 1 ? '1' : '0') .'},' . PHP_EOL;
 
