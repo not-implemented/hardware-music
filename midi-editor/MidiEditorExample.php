@@ -2,6 +2,7 @@
 
 require_once 'MidiFile.php';
 require_once 'MidiEditor.php';
+require_once 'NoteRenderer.php';
 require_once 'ScannerRenderer.php';
 
 $midiEditorExample = new MidiEditorExample();
