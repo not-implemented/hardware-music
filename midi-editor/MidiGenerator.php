@@ -1,15 +1,15 @@
 <?php
 
 class MidiGenerator {
-    public $logMessages = array();
+    public $timeDivision = 480;
+    public $tempoBpm = 120;
+    public $programType = 0;
+    public $velocity = 127;
 
     public function convertNotesToMidi($notes) {
-        $tempoBpm = 120;
-        $selectedProgramType = 40;
-
         $midiFile = new MidiFile();
         $midiFile->header->type = 0;
-        $midiFile->header->timeDivision = 480;
+        $midiFile->header->timeDivision = $this->timeDivision;
 
         $track = (object) array('events' => array());
 
@@ -27,22 +27,21 @@ class MidiGenerator {
             'deltaTime' => 0,
             'type' => 'meta',
             'metaType' => 'setTempo',
-            'tempoBpm' => $tempoBpm,
+            'tempoBpm' => $this->tempoBpm,
         );
 
         $track->events[] = (object) array(
             'deltaTime' => 0,
             'type' => 'programChange',
             'channel' => 0,
-            'programType' => $selectedProgramType,
+            'programType' => $this->programType,
         );
 
         $deltaTimeCarryover = 0;
 
         foreach ($notes as $note) {
             if (!preg_match('/^([CDEFGABH]#?\-?\d+|P):(\d+)\/(\d+)$/', $note, $matches)) {
-                $this->log('Ignoring invalid note "' . $note . '"');
-                continue;
+                throw new Exception('Invalid note "' . $note . '"');
             }
 
             $note = $matches[1];
@@ -62,7 +61,7 @@ class MidiGenerator {
                 'type' => 'noteOn',
                 'channel' => 0,
                 'note' => $note,
-                'velocity' => 127,
+                'velocity' => $this->velocity,
             );
 
             $deltaTimeCarryover = 0;
@@ -85,9 +84,5 @@ class MidiGenerator {
         $midiFile->tracks[1] = $track;
 
         return $midiFile;
-    }
-
-    private function log($message) {
-        $this->logMessages[] = $message;
     }
 }

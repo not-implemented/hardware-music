@@ -9,6 +9,7 @@ $midiGeneratorSample->main();
 class MidiGeneratorSample {
     public function main() {
         $midiGenerator = new MidiGenerator();
+        $midiGenerator->programType = 40;
 
         // Sieben Tage lang:
         $notes = array(
@@ -38,10 +39,6 @@ class MidiGeneratorSample {
         );
 
         $midiFile = $midiGenerator->convertNotesToMidi($notes);
-        foreach ($midiGenerator->logMessages as $logMessage) {
-            echo $logMessage . PHP_EOL;
-        }
-
         $midiFile->save('Sieben Tage lang.mid');
         foreach ($midiFile->logMessages as $logMessage) {
             echo $logMessage . PHP_EOL;
@@ -59,10 +56,6 @@ class MidiGeneratorSample {
         );
 
         $midiFile = $midiGenerator->convertNotesToMidi($notes);
-        foreach ($midiGenerator->logMessages as $logMessage) {
-            echo $logMessage . PHP_EOL;
-        }
-
         $midiFile->save('Tonleiter.mid');
         foreach ($midiFile->logMessages as $logMessage) {
             echo $logMessage . PHP_EOL;
