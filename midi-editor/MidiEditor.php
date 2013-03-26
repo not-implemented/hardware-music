@@ -1,6 +1,12 @@
 <?php
 
 class MidiEditor {
+    public $selectTrackId = 1;
+    public $selectChannel = 0;
+    public $modifyProgramType = 0;
+    public $modifyVelocity = 127;
+    public $highestNote = 'G9';
+
     public function analyzeTracks($midiFile) {
         foreach ($midiFile->tracks as $track) {
             $track->trackName = null;
@@ -35,20 +41,17 @@ class MidiEditor {
     }
 
     public function modifyTracks($midiFile) {
-        $selectedTrackId = 1;
-        $selectedProgramType = 40;
-        $selectedVelocity = 127;
-        $highestNote = $midiFile->mapNoteToMidi('E6');
-
         // select track:
         foreach ($midiFile->tracks as $trackId => $track) {
-            if ($trackId != $selectedTrackId) {
+            if ($trackId != $this->selectTrackId) {
                 unset($midiFile->tracks[$trackId]);
             }
         }
 
         // we have a "one-track-MIDI" now:
         $midiFile->header->type = 0;
+
+        $highestNote = $midiFile->mapNoteToMidi($this->highestNote);
 
         foreach ($midiFile->tracks as $track) {
             $trackEvents = array();
@@ -61,8 +64,9 @@ class MidiEditor {
                 $trackEvent->deltaTime += $deltaTimeCarryover;
                 $deltaTimeCarryover = 0;
 
-                // put all notes into one channel for now:
-                $trackEvent->channel = 0;
+                if (isset($trackEvent->channel) && $trackEvent->channel != $this->selectChannel) {
+                    continue;
+                }
 
                 // transpose high notes down:
                 if ($trackEvent->type == 'noteOn' || $trackEvent->type == 'noteOff') {
@@ -82,7 +86,7 @@ class MidiEditor {
                             'deltaTime' => 0,
                             'type' => 'programChange',
                             'channel' => $trackEvent->channel,
-                            'programType' => $selectedProgramType,
+                            'programType' => $this->modifyProgramType,
                         );
                     }
 
@@ -118,7 +122,7 @@ class MidiEditor {
 
                     $playingNote[$trackEvent->channel] = $trackEvent;
 
-                    $trackEvent->velocity = $selectedVelocity;
+                    $trackEvent->velocity = $this->modifyVelocity;
                 } elseif ($trackEvent->type == 'noteOff') {
                     if (empty($playingNote[$trackEvent->channel]) || $playingNote[$trackEvent->channel]->note !== $trackEvent->note) {
                         $deltaTimeCarryover += $trackEvent->deltaTime;
@@ -129,7 +133,7 @@ class MidiEditor {
 
                     $trackEvent->velocity = 0;
                 } elseif ($trackEvent->type == 'programChange') {
-                    $trackEvent->programType = $selectedProgramType;
+                    $trackEvent->programType = $this->modifyProgramType;
                     $programTypeSet[$trackEvent->channel] = true;
                 } elseif ($trackEvent->type == 'meta' && $trackEvent->metaType == 'timeSignature') {
                     // keep time signature

@@ -1,8 +1,8 @@
 <?php
 
 class ScannerRenderer {
-    public $selectedTrackId = 1;
-    public $selectedChannel = 0;
+    public $trackId = 1;
+    public $channel = 0;
 
     public function save($filename, $midiFile) {
         file_put_contents($filename, $this->render($midiFile));
@@ -12,10 +12,10 @@ class ScannerRenderer {
         $scannerData = '';
         $playingNote = null;
 
-        $track = $midiFile->tracks[$this->selectedTrackId];
+        $track = $midiFile->tracks[$this->trackId];
 
         foreach ($track->events as $trackEvent) {
-            if ($trackEvent->channel != $this->selectedChannel) {
+            if (isset($trackEvent->channel) && $trackEvent->channel != $this->channel) {
                 continue;
             }
 

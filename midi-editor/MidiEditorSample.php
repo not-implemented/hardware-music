@@ -13,6 +13,12 @@ class MidiEditorSample {
         $midiFile->load('Ungarischer Tanz.mid');
 
         $midiEditor = new MidiEditor();
+        $midiEditor->selectTrackId = 1;
+        $midiEditor->selectChannel = 0;
+        $midiEditor->modifyProgramType = 40;
+        $midiEditor->modifyVelocity = 127;
+        $midiEditor->highestNote = 'E6';
+
         $midiEditor->analyzeTracks($midiFile);
         $this->printTrackInfo($midiFile);
         $midiEditor->modifyTracks($midiFile);
@@ -24,8 +30,8 @@ class MidiEditorSample {
         }
 
         $scannerRenderer = new ScannerRenderer();
-        $scannerRenderer->selectedTrackId = 1;
-        $scannerRenderer->selectedChannel = 0;
+        $scannerRenderer->trackId = 1;
+        $scannerRenderer->channel = 0;
         $scannerRenderer->save('Ungarischer Tanz (scanner output).bin', $midiFile);
     }
 
