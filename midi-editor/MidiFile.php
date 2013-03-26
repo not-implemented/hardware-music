@@ -24,7 +24,7 @@ class MidiFile {
 
     private $metaEventTypeMapping = array(
         0x00 => 'sequenceNumber',
-        0x01 => 'textEvent',
+        0x01 => 'text',
         0x02 => 'copyrightNotice',
         0x03 => 'trackName',
         0x04 => 'instrumentName',
@@ -433,7 +433,7 @@ class MidiFile {
                     }
                 } else {
                     $this->log('Unknown meta event type "' . $metaEventType . '"');
-                    $trackEvent->metaType = 'unknown:' . $metaEventType;
+                    $trackEvent->metaType = 'id:' . $metaEventType;
                     $trackEvent->data = $metaData;
                 }
             } elseif ($eventType == 0xf0 || $eventType == 0xf7) {
@@ -471,7 +471,7 @@ class MidiFile {
                             $trackEvent->controllerType = $this->controllerTypeMapping[$controllerType];
                         } else {
                             $this->log('Unknown controller type "' . $controllerType . '"');
-                            $trackEvent->controllerType = 'unknown:' . $controllerType;
+                            $trackEvent->controllerType = 'id:' . $controllerType;
                         }
 
                         $trackEvent->value = $this->parseByte($chunk, $offset);
@@ -486,7 +486,7 @@ class MidiFile {
                     }
                 } else {
                     $this->log('Unknown event type "' . $eventType . '"');
-                    $trackEvent->type = 'unknown:' . $eventType;
+                    $trackEvent->type = 'id:' . $eventType;
                 }
             }
 
@@ -582,10 +582,12 @@ class MidiFile {
 
                 if (array_key_exists($trackEvent->metaType, $metaEventTypeMapping)) {
                     $metaEventType = $metaEventTypeMapping[$trackEvent->metaType];
+                } elseif (preg_match('/^id:(\d+)$/', $trackEvent->metaType, $matches)) {
+                    $metaEventType = (int) $matches[1];
+                    $metaData = $trackEvent->data;
                 } else {
                     $this->log('Unknown meta event type "' . $trackEvent->metaType . '"');
-                    $metaEventType = 0x00; // TODO: $trackEvent->metaType = 'unknown:' . $metaEventType;
-                    $metaData = $trackEvent->data;
+                    continue;
                 }
 
                 if ($trackEvent->metaType == 'sequenceNumber') {
@@ -637,9 +639,11 @@ class MidiFile {
 
                 if (array_key_exists($trackEvent->type, $eventTypeMapping)) {
                     $eventType = $eventTypeMapping[$trackEvent->type];
+                } elseif (preg_match('/^id:(\d+)$/', $trackEvent->type, $matches)) {
+                    $eventType = (int) $matches[1];
                 } else {
                     $this->log('Unknown event type "' . $trackEvent->type . '"');
-                    $eventType = 0x8; // TODO: $trackEvent->type = 'unknown:' . $eventType;
+                    continue;
                 }
 
                 $eventType = ($eventType << 4) | $trackEvent->channel;
@@ -669,9 +673,11 @@ class MidiFile {
                 } elseif ($trackEvent->type == 'controller') {
                     if (array_key_exists($trackEvent->controllerType, $controllerTypeMapping)) {
                         $controllerType = $controllerTypeMapping[$trackEvent->controllerType];
+                    } elseif (preg_match('/^id:(\d+)$/', $trackEvent->controllerType, $matches)) {
+                        $controllerType = (int) $matches[1];
                     } else {
                         $this->log('Unknown controller type "' . $trackEvent->controllerType . '"');
-                        $controllerType = 0x00; // TODO: $trackEvent->controllerType = 'unknown:' . $controllerType;
+                        continue;
                     }
 
                     $packet .= pack('C', $controllerType);
