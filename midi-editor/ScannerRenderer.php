@@ -24,7 +24,7 @@ class ScannerRenderer extends NoteRenderer {
             $scannerData .= '{' . $pause .', ' . $steps . ', ' . $delay .', ' . ($direction == 1 ? '1' : '0') .'},' . PHP_EOL;
 
             $currentPosition += $steps * $direction;
-            if ($currentPosition >= 500) {
+            if ($currentPosition >= 2000) {
                 $direction = -1;
             } elseif ($currentPosition <= 0) {
                 $direction = 1;
