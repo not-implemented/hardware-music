@@ -3,6 +3,7 @@
 abstract class NoteRenderer {
     public $trackId = 1;
     public $channel = 0;
+    public $concertPitchFrequency = 440;
 
     public function save($filename, $midiFile) {
         file_put_contents($filename, $this->render($midiFile));
@@ -20,8 +21,12 @@ abstract class NoteRenderer {
         $playingNote = (object) array(
             'pause' => 0,
             'note' => null,
+            'frequency' => null,
             'duration' => 0,
         );
+
+        $concertPitchMidiNote = $midiFile->mapNoteToMidi('A4');
+        $diffFactor = pow(2, 1/12); // note-to-note frequency difference factor: 12th root of 2
 
         foreach ($track->events as $trackEvent) {
             // duration in microseconds:
@@ -46,12 +51,17 @@ abstract class NoteRenderer {
                 }
 
                 $playingNote->duration += $durationCarryover;
+
+                $midiNote = $midiFile->mapNoteToMidi($playingNote->note);
+                $playingNote->frequency = round($this->concertPitchFrequency * pow($diffFactor, $midiNote - $concertPitchMidiNote), 3);
+
                 $notes[] = $playingNote;
 
                 $durationCarryover = 0;
                 $playingNote = (object) array(
                     'pause' => 0,
                     'note' => null,
+                    'frequency' => null,
                     'duration' => 0,
                 );
             } elseif ($trackEvent->type == 'meta' && $trackEvent->metaType == 'setTempo') {
