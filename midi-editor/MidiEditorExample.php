@@ -11,7 +11,7 @@ $midiEditorExample->main();
 class MidiEditorExample {
     public function main() {
         $midiFile = new MidiFile();
-        $midiFile->load('Ungarischer Tanz.mid');
+        $midiFile->load('midi/Ungarischer Tanz.mid');
 
         $midiEditor = new MidiEditor();
         $midiEditor->selectTrackId = 1;
