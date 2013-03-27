@@ -30,7 +30,7 @@ abstract class NoteRenderer {
 
         foreach ($track->events as $trackEvent) {
             // duration in microseconds:
-            $durationCarryover += (int) (($trackEvent->deltaTime / $midiFile->header->timeDivision) * (60 * 1000000 / $tempoBpm));
+            $durationCarryover += $midiFile->midiTimeToMicroseconds($trackEvent->deltaTime, $tempoBpm);
 
             if (isset($trackEvent->channel) && $trackEvent->channel != $this->channel) {
                 continue;

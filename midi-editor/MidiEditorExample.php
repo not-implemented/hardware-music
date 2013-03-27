@@ -19,6 +19,7 @@ class MidiEditorExample {
         $midiEditor->modifyProgramType = 40;
         $midiEditor->modifyVelocity = 127;
         $midiEditor->highestNote = 'E6';
+        $midiEditor->minimalPause = 100000;
 
         $midiEditor->analyzeTracks($midiFile);
         $this->printTrackInfo($midiFile);

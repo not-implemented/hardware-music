@@ -269,6 +269,10 @@ class MidiFile {
         $this->logMessages = array();
     }
 
+    public function midiTimeToMicroseconds($midiTime, $tempoBpm = 120) {
+        return (int) (($midiTime / $this->header->timeDivision) * (60 * 1000000 / $tempoBpm));
+    }
+
     public function getProgramTypeName($programType) {
         if (array_key_exists($programType, $this->programTypeNames)) {
             $programTypeName = $this->programTypeNames[$programType];

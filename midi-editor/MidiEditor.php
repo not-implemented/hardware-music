@@ -6,6 +6,7 @@ class MidiEditor {
     public $modifyProgramType = 0;
     public $modifyVelocity = 127;
     public $highestNote = 'G9';
+    public $minimalPause = null;
 
     public function analyzeTracks($midiFile) {
         foreach ($midiFile->tracks as $track) {
@@ -58,7 +59,9 @@ class MidiEditor {
 
             $deltaTimeCarryover = 0;
             $playingNote = array();
+            $lastNote = null;
             $programTypeSet = array();
+            $tempoBpm = 120;
 
             foreach ($track->events as $trackEvent) {
                 $trackEvent->deltaTime += $deltaTimeCarryover;
@@ -120,18 +123,32 @@ class MidiEditor {
                         }
                     }
 
-                    $playingNote[$trackEvent->channel] = $trackEvent;
+                    // handle minimalPause:
+                    if ($this->minimalPause !== null && $lastNote !== null) {
+                        // same note always needs pause:
+                        if ($lastNote->note != $trackEvent->note) {
+                            $duration = $midiFile->midiTimeToMicroseconds($trackEvent->deltaTime, $tempoBpm);
+
+                            if ($duration > 0 && $duration < $this->minimalPause) {
+                                $lastNote->deltaTime += $trackEvent->deltaTime;
+                                $trackEvent->deltaTime = 0;
+                            }
+                        }
+                    }
 
                     $trackEvent->velocity = $this->modifyVelocity;
+
+                    $playingNote[$trackEvent->channel] = $trackEvent;
                 } elseif ($trackEvent->type == 'noteOff') {
                     if (empty($playingNote[$trackEvent->channel]) || $playingNote[$trackEvent->channel]->note !== $trackEvent->note) {
                         $deltaTimeCarryover += $trackEvent->deltaTime;
                         continue; // discard when this note is not playing
                     }
 
-                    $playingNote[$trackEvent->channel] = null;
-
                     $trackEvent->velocity = 0;
+
+                    $playingNote[$trackEvent->channel] = null;
+                    $lastNote = $trackEvent;
                 } elseif ($trackEvent->type == 'programChange') {
                     $trackEvent->programType = $this->modifyProgramType;
                     $programTypeSet[$trackEvent->channel] = true;
@@ -140,7 +157,7 @@ class MidiEditor {
                 } elseif ($trackEvent->type == 'meta' && $trackEvent->metaType == 'trackName') {
                     // keep track name
                 } elseif ($trackEvent->type == 'meta' && $trackEvent->metaType == 'setTempo') {
-                    // keep tempo changes
+                    $tempoBpm = $trackEvent->tempoBpm;
                 } elseif ($trackEvent->type == 'meta' && $trackEvent->metaType == 'endOfTrack') {
                     // keep end of track marker
                 } else {
