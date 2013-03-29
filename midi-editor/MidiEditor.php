@@ -70,6 +70,7 @@ class MidiEditor {
                 $deltaTimeCarryover = 0;
 
                 if (isset($trackEvent->channel) && $trackEvent->channel != $this->selectChannel) {
+                    $deltaTimeCarryover += $trackEvent->deltaTime;
                     continue;
                 }
 
