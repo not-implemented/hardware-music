@@ -31,3 +31,8 @@ via GPIO on Raspberry Pi.
 Features:
 - Automatic direction change
 - Tune notes (adjust delay overhead)
+
+
+web-interface
+--------------
+Simple Web-Interface for midi-editor and stepper-motor-player
