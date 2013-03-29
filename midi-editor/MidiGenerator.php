@@ -81,7 +81,7 @@ class MidiGenerator {
             'metaType' => 'endOfTrack',
         );
 
-        $midiFile->tracks[1] = $track;
+        $midiFile->tracks[] = $track;
 
         return $midiFile;
     }

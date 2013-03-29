@@ -345,9 +345,8 @@ class MidiFile {
 
         unset($this->header->trackCount);
 
-        $trackId = 1;
         foreach ($chunks as $chunk) {
-            $this->tracks[$trackId++] = $this->parseTrackChunk($chunk);
+            $this->tracks[] = $this->parseTrackChunk($chunk);
         }
     }
 

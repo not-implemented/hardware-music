@@ -1,7 +1,7 @@
 <?php
 
 abstract class NoteRenderer {
-    public $trackId = 1;
+    public $track = 0;
     public $channel = 0;
     public $concertPitchFrequency = 440;
 
@@ -12,7 +12,7 @@ abstract class NoteRenderer {
     abstract public function render($midiFile);
 
     protected function renderNotes($midiFile) {
-        $track = $midiFile->tracks[$this->trackId];
+        $track = $midiFile->tracks[$this->track];
 
         $notes = array();
 

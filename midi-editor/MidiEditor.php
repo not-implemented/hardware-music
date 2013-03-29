@@ -1,7 +1,7 @@
 <?php
 
 class MidiEditor {
-    public $selectTrackId = 1;
+    public $selectTrack = 0;
     public $selectChannel = 0;
     public $modifyProgramType = 0;
     public $modifyVelocity = 127;
@@ -38,13 +38,15 @@ class MidiEditor {
                     $track->noteCountPerChannel[$trackEvent->channel]++;
                 }
             }
+
+            ksort($track->noteCountPerChannel);
         }
     }
 
     public function modifyTracks($midiFile) {
         // select track:
         foreach ($midiFile->tracks as $trackId => $track) {
-            if ($trackId != $this->selectTrackId) {
+            if ($trackId != $this->selectTrack) {
                 unset($midiFile->tracks[$trackId]);
             }
         }
