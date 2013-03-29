@@ -466,7 +466,7 @@ class MidiFile {
                         $byte2 = $this->parseByte($metaData, $metaDataOffset);
                         $byte3 = $this->parseByte($metaData, $metaDataOffset);
                         $tempo = ($byte1 << 16) | ($byte2 << 8) | $byte3; // microseconds per quarter note
-                        $trackEvent->tempoBpm = round(60000000 / $tempo, 3);
+                        $trackEvent->tempoBpm = round(60000000 / $tempo, 6);
                     } elseif ($trackEvent->metaType == 'smpteOffset') {
                         $this->log('TODO: Parse meta event type "' . $trackEvent->metaType . '"');
                         $trackEvent->data = $metaData;
@@ -658,7 +658,7 @@ class MidiFile {
                 } elseif ($trackEvent->metaType == 'endOfTrack') {
                     $metaData = '';
                 } elseif ($trackEvent->metaType == 'setTempo') {
-                    $tempo = (int) (60000000 / $trackEvent->tempoBpm);
+                    $tempo = round(60000000 / $trackEvent->tempoBpm);
                     $metaData = pack('N', $tempo);
                     $metaData = substr($metaData, 1); // 3 byte only
                 } elseif ($trackEvent->metaType == 'smpteOffset') {
