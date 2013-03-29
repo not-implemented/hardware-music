@@ -84,6 +84,12 @@ void playFile(const char *content, uint size) {
         steps = note->duration * note->frequency / 1000000;
         delay = 1000000 / note->frequency - microsecondsOverhead;
 
+        if (currentDirection < 0 && currentPosition - steps < 0) {
+            currentDirection = 1;
+        } else if (currentDirection > 0 && currentPosition + steps > maxPosition) {
+            currentDirection = -1;
+        }
+
         for (s = 0; s < steps; s++) {
             motorStep(delay);
         }
