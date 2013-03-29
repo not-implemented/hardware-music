@@ -2,107 +2,145 @@
 * Play notes on a stepper motor via GPIO on Raspberry Pi (uses Gertboard test suite)
 */
 
-#include <string.h>
-#include <sys/time.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <stdint.h>
+#include <errno.h>
+#include <unistd.h>
 
 #include "gb_common.h"
 
-void setup_gpio(void) {
-  INP_GPIO(2); OUT_GPIO(2);
-  INP_GPIO(3); OUT_GPIO(3);
-  INP_GPIO(17); OUT_GPIO(17);
-  INP_GPIO(18); OUT_GPIO(18);
+
+uint gpioPins[4] = {2, 17, 3, 18};
+uint maxPosition = 4000;
+uint microsecondsOverhead = 76;
+
+int currentPosition = 0;
+int currentPin = 0;
+int currentDirection = 1;
+
+typedef struct {
+    uint32_t pause;
+    uint32_t frequency;
+    uint32_t duration;
+} Note;
+
+
+void setupGpio() {
+    uint i;
+    for (i = 0; i < 4; i++) {
+        INP_GPIO(gpioPins[i]);
+        OUT_GPIO(gpioPins[i]);
+    }
 }
 
-void motorStep(unsigned int delay, unsigned int direction, unsigned int halfstep) {
-    unsigned int forward[] = {2, 17, 3, 18};
-    unsigned int backward[] = {18, 3, 17, 2};
-    unsigned int *order = direction ? &backward : &forward;
-
-    if (halfstep) {
-        GPIO_SET0 = 1<<order[0];
-        usleep(delay);
-        GPIO_CLR0 = 1<<order[3];
-        usleep(delay);
-
-        GPIO_SET0 = 1<<order[1];
-        usleep(delay);
-        GPIO_CLR0 = 1<<order[0];
-        usleep(delay);
-
-        GPIO_SET0 = 1<<order[2];
-        usleep(delay);
-        GPIO_CLR0 = 1<<order[1];
-        usleep(delay);
-
-        GPIO_SET0 = 1<<order[3];
-        usleep(delay);
-        GPIO_CLR0 = 1<<order[2];
-        usleep(delay);
-    } else {
-        GPIO_SET0 = 1<<order[0];
-        usleep(delay);
-        GPIO_CLR0 = 1<<order[0];
-
-        GPIO_SET0 = 1<<order[1];
-        usleep(delay);
-        GPIO_CLR0 = 1<<order[1];
-
-        GPIO_SET0 = 1<<order[2];
-        usleep(delay);
-        GPIO_CLR0 = 1<<order[2];
-
-        GPIO_SET0 = 1<<order[3];
-        usleep(delay);
-        GPIO_CLR0 = 1<<order[3];
+void motorOff() {
+    uint i;
+    for (i = 0; i < 4; i++) {
+        GPIO_CLR0 = 1 << gpioPins[i];
     }
+}
+
+void motorStep(uint delay) {
+    GPIO_SET0 = 1 << gpioPins[currentPin];
+    usleep(delay);
+    GPIO_CLR0 = 1 << gpioPins[currentPin];
+
+    if (currentDirection < 0 && currentPosition <= 0) {
+        currentDirection = 1;
+    } else if (currentDirection > 0 && currentPosition >= maxPosition) {
+        currentDirection = -1;
+    }
+
+    currentPosition += currentDirection;
+
+    if (currentDirection < 0 && currentPin <= 0) {
+        currentPin = 3;
+    } else if (currentDirection > 0 && currentPin >= 3) {
+        currentPin = 0;
+    } else {
+        currentPin += currentDirection;
+    }
+}
+
+void playFile(const char *content, uint size) {
+    Note *notes = (Note *) content;
+    uint countNotes = size / sizeof(Note);
+    uint steps, delay;
+    uint n, s;
+
+    printf("Playing %d notes\n", countNotes);
+
+    for (n = 0; n < countNotes; n++) {
+        Note *note = &notes[n];
+
+        motorOff();
+
+        if (note->pause > 0) {
+            usleep(note->pause);
+        }
+
+        steps = note->duration * note->frequency / 1000000;
+        delay = 1000000 / note->frequency - microsecondsOverhead;
+
+        for (s = 0; s < steps; s++) {
+            motorStep(delay);
+        }
+    }
+
+    motorOff();
+}
+
+char * loadFile(const char *filename, uint *size) {
+    FILE *file;
+    char *content;
+
+    file = fopen(filename, "rb");
+    if (file == NULL) {
+        return NULL;
+    }
+
+    fseek(file, 0, SEEK_END);
+    *size = ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+    content = malloc(*size);
+    if (content == NULL) {
+        return NULL;
+    }
+
+    if (*size != fread(content, sizeof(char), *size, file)) {
+        free(content);
+        return NULL;
+    }
+
+    fclose(file);
+
+    return content;
 }
 
 int main(int argc, char* argv[]) {
-    int i, j, direction;
+    char *content;
+    uint size;
 
-    setup_io();
-
-    setup_gpio();
-
-    unsigned int song[][4] = {
-        {0, 192, 3329, 1},
-        {0, 85, 2475, 1},
-        {0, 304, 2069, 1},
-        {0, 85, 2475, 1},
-        {0, 241, 2627, 1},
-        {0, 43, 2475, 1},
-        {0, 48, 2197, 1},
-        {0, 341, 2475, 1},
-    };
-
-    unsigned int count = 8;
-
-    for (i = 0; i < count; i++) {
-        unsigned int *note = &song[i];
-        unsigned int pause = note[0];
-
-        GPIO_CLR0 = 1<<2;
-        GPIO_CLR0 = 1<<3;
-        GPIO_CLR0 = 1<<17;
-        GPIO_CLR0 = 1<<18;
-
-        if (pause > 0) {
-            usleep(pause);
-        }
-
-        direction = note[3];
-
-        for (j = 0; j < note[1] / 4; j++) {
-            motorStep(note[2], direction, 0);
-        }
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s <binary-note-file>\n", argv[0]);
+        return 1;
     }
 
-    GPIO_CLR0 = 1<<2;
-    GPIO_CLR0 = 1<<3;
-    GPIO_CLR0 = 1<<17;
-    GPIO_CLR0 = 1<<18;
+    content = loadFile(argv[1], &size);
+    if (content == NULL) {
+        fprintf(stderr, "Error loading file \"%s\": %s", argv[1], strerror(errno));
+        return 1;
+    }
 
+    setup_io();
+    setupGpio();
+    playFile(content, size);
     restore_io();
+
+    free(content);
+
+    return 0;
 }
