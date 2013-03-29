@@ -13,25 +13,45 @@ class MidiFile {
     public $logMessages;
 
     private $eventTypeMapping = array(
+        // Voice category events (second nibble contains channel):
         0x8 => 'noteOff',
         0x9 => 'noteOn',
-        0xa => 'noteAftertouch',
+        0xa => 'keyPressure',
         0xb => 'controller',
         0xc => 'programChange',
-        0xd => 'channelAftertouch',
+        0xd => 'channelKeyPressure',
         0xe => 'pitchBend',
+
+        // System common category events:
+        0xf0 => 'systemExclusive',
+        0xf1 => 'midiTimeCode',
+        0xf2 => 'songPositionPointer',
+        0xf3 => 'songSelect',
+        0xf6 => 'tuneRequest',
+        0xf7 => 'endSystemExclusive',
+
+        // Realtime category events:
+        0xf8 => 'timingClock',
+        0xfa => 'startPlayback',
+        0xfb => 'continuePlayback',
+        0xfc => 'stopPlayback',
+        0xfe => 'activeSensing',
+        0xff => 'meta',
     );
 
     private $metaEventTypeMapping = array(
         0x00 => 'sequenceNumber',
         0x01 => 'text',
-        0x02 => 'copyrightNotice',
+        0x02 => 'copyright',
         0x03 => 'trackName',
         0x04 => 'instrumentName',
-        0x05 => 'lyrics',
+        0x05 => 'lyric',
         0x06 => 'marker',
         0x07 => 'cuePoint',
+        0x08 => 'programName',
+        0x09 => 'deviceName',
         0x20 => 'channelPrefix',
+        0x21 => 'portPrefix',
         0x2f => 'endOfTrack',
         0x51 => 'setTempo',
         0x54 => 'smpteOffset',
@@ -41,9 +61,9 @@ class MidiFile {
     );
 
     private $controllerTypeMapping = array(
+        0x00 => 'bankSelect',
+        0x01 => 'modulation',
         /*
-        0x00 => 'Bank Select',
-        0x01 => 'Modulation',
         0x02 => 'Breath Controller',
         0x04 => 'Foot Controller',
         0x05 => 'Portamento Time',
@@ -54,15 +74,21 @@ class MidiFile {
         0x08 => 'Balance',
         */
         0x0a => 'pan',
+        0x0b => 'expression',
         /*
-        0x0b => 'Expression Controller',
         0x0c => 'Effect Control 1',
         0x0d => 'Effect Control 2',
         0x10 => 'General-Purpose Controller 1',
         0x11 => 'General-Purpose Controller 2',
         0x12 => 'General-Purpose Controller 3',
         0x13 => 'General-Purpose Controller 4',
-        0x40 => 'Damper pedal (sustain)',
+        */
+
+        // 0x20-0x3f: LSB for Controllers 0x00-0x1f (rarely implemented)
+        0x20 => 'bankSelect_lsb',
+
+        0x40 => 'sustain',
+        /*
         0x41 => 'Portamento',
         0x42 => 'Sostenuto',
         0x43 => 'Soft Pedal',
@@ -83,9 +109,11 @@ class MidiFile {
         0x52 => 'General-Purpose Controller 7',
         0x53 => 'General-Purpose Controller 8',
         0x54 => 'Portamento Control',
-        0x5b => 'Effects 1 Depth', // formerly External Effects Depth
-        0x5c => 'Effects 2 Depth', // formerly Tremolo Depth
-        0x5d => 'Effects 3 Depth', // formerly Chorus Depth
+        */
+        0x5b => 'effect1Depth', // formerly External Effects Depth
+        0x5c => 'effect2Depth', // formerly Tremolo Depth
+        0x5d => 'effect3Depth', // formerly Chorus Depth
+        /*
         0x5e => 'Effects 4 Depth', // formerly Celeste Detune
         0x5f => 'Effects 5 Depth', // formerly Phaser Depth
         0x60 => 'Data Increment',
@@ -95,6 +123,14 @@ class MidiFile {
         0x64 => 'Registered Parameter Number (LSB)',
         0x65 => 'Registered Parameter Number (MSB)',
         */
+        0x78 => 'allSoundOff',
+        0x79 => 'resetAllControllers',
+        0x7a => 'localControl',
+        0x7b => 'allNotesOff',
+        0x7c => 'omniModeOff',
+        0x7d => 'omniModeOn',
+        0x7e => 'monoModeOn',
+        0x7f => 'polyModeOn',
     );
 
     private $programTypeNames = array(
@@ -374,45 +410,58 @@ class MidiFile {
         while ($offset < strlen($chunk)) {
             $trackEvent = new stdClass();
             $trackEvent->deltaTime = $this->parseVariableLengthValue($chunk, $offset);
+            $trackEvent->type = null;
 
             $eventType = $this->parseByte($chunk, $offset);
 
             // "running status" feature:
-            if ($eventType & 0x80) {
-                $lastEventType = $eventType;
-            } elseif ($lastEventType !== null) {
-                $eventType = $lastEventType;
-                $offset--;
+            if ($eventType <= 0x7f) {
+                if ($lastEventType !== null) {
+                    $eventType = $lastEventType;
+                    $offset--;
 
-                $this->useRunningStatus = true;
-            } else {
-                $this->log('No "running status" possible here');
-                $eventType = 0x80; // fix with "noteOn" on channel 0
-                $offset--;
+                    $this->useRunningStatus = true;
+                } else {
+                    $this->log('No "running status" possible here');
+                    continue;
+                }
             }
 
-            if ($eventType == 0xff) {
-                $trackEvent->type = 'meta';
+            // Voice category event (second nibble contains channel):
+            if ($eventType >= 0x80 && $eventType <= 0xef) {
+                $lastEventType = $eventType;
+                $trackEvent->channel = $eventType & 0x0f;
+                $eventType = ($eventType & 0xf0) >> 4;
+            }
+
+            if (array_key_exists($eventType, $this->eventTypeMapping)) {
+                $trackEvent->type = $this->eventTypeMapping[$eventType];
+            } else {
+                $this->log('Unknown event type "' . $eventType . '"');
+                $trackEvent->type = 'id:' . $eventType;
+            }
+
+            if ($trackEvent->type == 'meta') {
                 $metaEventType = $this->parseByte($chunk, $offset);
                 $dataLength = $this->parseVariableLengthValue($chunk, $offset);
                 $metaData = substr($chunk, $offset, $dataLength);
+                $metaDataOffset = 0;
                 $offset += $dataLength;
 
                 if (array_key_exists($metaEventType, $this->metaEventTypeMapping)) {
                     $trackEvent->metaType = $this->metaEventTypeMapping[$metaEventType];
 
                     if ($trackEvent->metaType == 'sequenceNumber') {
-                        $metaDataOffset = 0;
                         $byte1 = $this->parseByte($metaData, $metaDataOffset);
                         $byte2 = $this->parseByte($metaData, $metaDataOffset);
                         $trackEvent->number = ($byte1 << 8) | $byte2;
                     } elseif ($trackEvent->metaType == 'channelPrefix') {
-                        $metaDataOffset = 0;
                         $trackEvent->channel = $this->parseByte($metaData, $metaDataOffset);
+                    } elseif ($trackEvent->metaType == 'portPrefix') {
+                        $trackEvent->port = $this->parseByte($metaData, $metaDataOffset);
                     } elseif ($trackEvent->metaType == 'endOfTrack') {
                         // no data expected for endOfTrack
                     } elseif ($trackEvent->metaType == 'setTempo') {
-                        $metaDataOffset = 0;
                         $byte1 = $this->parseByte($metaData, $metaDataOffset);
                         $byte2 = $this->parseByte($metaData, $metaDataOffset);
                         $byte3 = $this->parseByte($metaData, $metaDataOffset);
@@ -422,7 +471,6 @@ class MidiFile {
                         $this->log('TODO: Parse meta event type "' . $trackEvent->metaType . '"');
                         $trackEvent->data = $metaData;
                     } elseif ($trackEvent->metaType == 'timeSignature') {
-                        $metaDataOffset = 0;
                         $trackEvent->numerator = $this->parseByte($metaData, $metaDataOffset);
                         $trackEvent->denominator = pow(2, $this->parseByte($metaData, $metaDataOffset));
                         $trackEvent->metronomeTimePerClick = $this->parseByte($metaData, $metaDataOffset);
@@ -430,68 +478,58 @@ class MidiFile {
                     } elseif ($trackEvent->metaType == 'keySignature') {
                         $this->log('TODO: Parse meta event type "' . $trackEvent->metaType . '"');
                         $trackEvent->data = $metaData;
-                    } elseif ($trackEvent->metaType == 'sequencerSpecific') {
-                        $trackEvent->data = $metaData;
-                    } else {
+                    } elseif ($metaEventType >= 0x01 && $metaEventType <= 0x0f) {
                         $trackEvent->text = $metaData;
+                    } else {
+                        $trackEvent->data = $metaData;
                     }
                 } else {
                     $this->log('Unknown meta event type "' . $metaEventType . '"');
                     $trackEvent->metaType = 'id:' . $metaEventType;
                     $trackEvent->data = $metaData;
                 }
-            } elseif ($eventType == 0xf0 || $eventType == 0xf7) {
-                $trackEvent->type = $eventType == 0xf0 ? 'sysEx' : 'authSysEx';
+            } elseif ($eventType >= 0xf0 && $eventType <= 0xfe) {
+                if ($eventType <= 0xf7) {
+                    $lastEventType = null; // System common category event resets running status
+                }
+
                 $dataLength = $this->parseVariableLengthValue($chunk, $offset);
                 $trackEvent->data = substr($chunk, $offset, $dataLength);
                 $offset += $dataLength;
-            } else {
-                $trackEvent->type = null;
-                $trackEvent->channel = $eventType & 0x0f;
-                $eventType = ($eventType & 0xf0) >> 4;
+            } elseif ($trackEvent->type == 'noteOff') {
+                $trackEvent->note = $this->mapNoteFromMidi($this->parseByte($chunk, $offset));
+                $trackEvent->velocity = $this->parseByte($chunk, $offset);
 
-                if (array_key_exists($eventType, $this->eventTypeMapping)) {
-                    $trackEvent->type = $this->eventTypeMapping[$eventType];
+                $this->useNoteOffEvent = true;
+            } elseif ($trackEvent->type == 'noteOn') {
+                $trackEvent->note = $this->mapNoteFromMidi($this->parseByte($chunk, $offset));
+                $trackEvent->velocity = $this->parseByte($chunk, $offset);
 
-                    if ($trackEvent->type == 'noteOff') {
-                        $trackEvent->note = $this->mapNoteFromMidi($this->parseByte($chunk, $offset));
-                        $trackEvent->velocity = $this->parseByte($chunk, $offset);
-
-                        $this->useNoteOffEvent = true;
-                    } elseif ($trackEvent->type == 'noteOn') {
-                        $trackEvent->note = $this->mapNoteFromMidi($this->parseByte($chunk, $offset));
-                        $trackEvent->velocity = $this->parseByte($chunk, $offset);
-
-                        if ($trackEvent->velocity == 0) {
-                            $trackEvent->type = 'noteOff';
-                        }
-                    } elseif ($trackEvent->type == 'noteAftertouch') {
-                        $trackEvent->note = $this->mapNoteFromMidi($this->parseByte($chunk, $offset));
-                        $trackEvent->amount = $this->parseByte($chunk, $offset);
-                    } elseif ($trackEvent->type == 'controller') {
-                        $controllerType = $this->parseByte($chunk, $offset);
-
-                        if (array_key_exists($controllerType, $this->controllerTypeMapping)) {
-                            $trackEvent->controllerType = $this->controllerTypeMapping[$controllerType];
-                        } else {
-                            $this->log('Unknown controller type "' . $controllerType . '"');
-                            $trackEvent->controllerType = 'id:' . $controllerType;
-                        }
-
-                        $trackEvent->value = $this->parseByte($chunk, $offset);
-                    } elseif ($trackEvent->type == 'programChange') {
-                        $trackEvent->programType = $this->parseByte($chunk, $offset);
-                    } elseif ($trackEvent->type == 'channelAftertouch') {
-                        $trackEvent->amount = $this->parseByte($chunk, $offset);
-                    } elseif ($trackEvent->type == 'pitchBend') {
-                        $byte1 = $this->parseByte($chunk, $offset);
-                        $byte2 = $this->parseByte($chunk, $offset);
-                        $trackEvent->value = ($byte2 << 8) | $byte1;
-                    }
-                } else {
-                    $this->log('Unknown event type "' . $eventType . '"');
-                    $trackEvent->type = 'id:' . $eventType;
+                if ($trackEvent->velocity == 0) {
+                    $trackEvent->type = 'noteOff';
                 }
+            } elseif ($trackEvent->type == 'keyPressure') {
+                $trackEvent->note = $this->mapNoteFromMidi($this->parseByte($chunk, $offset));
+                $trackEvent->amount = $this->parseByte($chunk, $offset);
+            } elseif ($trackEvent->type == 'controller') {
+                $controllerType = $this->parseByte($chunk, $offset);
+
+                if (array_key_exists($controllerType, $this->controllerTypeMapping)) {
+                    $trackEvent->controllerType = $this->controllerTypeMapping[$controllerType];
+                } else {
+                    $this->log('Unknown controller type "' . $controllerType . '"');
+                    $trackEvent->controllerType = 'id:' . $controllerType;
+                }
+
+                $trackEvent->value = $this->parseByte($chunk, $offset);
+            } elseif ($trackEvent->type == 'programChange') {
+                $trackEvent->programType = $this->parseByte($chunk, $offset);
+            } elseif ($trackEvent->type == 'channelKeyPressure') {
+                $trackEvent->amount = $this->parseByte($chunk, $offset);
+            } elseif ($trackEvent->type == 'pitchBend') {
+                $byte1 = $this->parseByte($chunk, $offset);
+                $byte2 = $this->parseByte($chunk, $offset);
+                $trackEvent->value = ($byte2 << 8) | $byte1;
             }
 
             $track->events[] = $trackEvent;
@@ -581,9 +619,26 @@ class MidiFile {
         foreach ($track->events as $trackEvent) {
             $packet = $this->renderVariableLengthValue($trackEvent->deltaTime);
 
-            if ($trackEvent->type == 'meta') {
-                $eventType = 0xff;
+            if (!$this->useNoteOffEvent && $trackEvent->type == 'noteOff') {
+                $trackEvent = clone $trackEvent;
+                $trackEvent->type = 'noteOn';
+                $trackEvent->velocity = 0;
+            }
 
+            if (array_key_exists($trackEvent->type, $eventTypeMapping)) {
+                $eventType = $eventTypeMapping[$trackEvent->type];
+            } elseif (preg_match('/^id:(\d+)$/', $trackEvent->type, $matches)) {
+                $eventType = (int) $matches[1];
+            } else {
+                $this->log('Unknown event type "' . $trackEvent->type . '"');
+                continue;
+            }
+
+            if ($eventType >= 0x8 && $eventType <= 0xe) {
+                $eventType = ($eventType << 4) | $trackEvent->channel;
+            }
+
+            if ($trackEvent->type == 'meta') {
                 if (array_key_exists($trackEvent->metaType, $metaEventTypeMapping)) {
                     $metaEventType = $metaEventTypeMapping[$trackEvent->metaType];
                 } elseif (preg_match('/^id:(\d+)$/', $trackEvent->metaType, $matches)) {
@@ -598,6 +653,8 @@ class MidiFile {
                     $metaData = pack('n', $trackEvent->number);
                 } elseif ($trackEvent->metaType == 'channelPrefix') {
                     $metaData = pack('C', $trackEvent->channel);
+                } elseif ($trackEvent->metaType == 'portPrefix') {
+                    $metaData = pack('C', $trackEvent->port);
                 } elseif ($trackEvent->metaType == 'endOfTrack') {
                     $metaData = '';
                 } elseif ($trackEvent->metaType == 'setTempo') {
@@ -614,10 +671,10 @@ class MidiFile {
                     $metaData .= pack('C', $trackEvent->count32ndNotesPerQuarter);
                 } elseif ($trackEvent->metaType == 'keySignature') {
                     $metaData = $trackEvent->data;
-                } elseif ($trackEvent->metaType == 'sequencerSpecific') {
-                    $metaData = $trackEvent->data;
-                } else {
+                } elseif ($metaEventType >= 0x01 && $metaEventType <= 0x0f) {
                     $metaData = $trackEvent->text;
+                } else {
+                    $metaData = $trackEvent->data;
                 }
 
                 $packet .= pack('C', $eventType);
@@ -626,31 +683,13 @@ class MidiFile {
                 $packet .= $metaData;
 
                 $lastEventType = null;
-            } elseif ($trackEvent->type == 'sysEx' || $trackEvent->type == 'authSysEx') {
-                $eventType = $trackEvent->type == 'sysEx' ? 0xf0 : 0xf7;
-
+            } elseif ($eventType >= 0xf0 && $eventType <= 0xfe) {
                 $packet .= pack('C', $eventType);
                 $packet .= $this->renderVariableLengthValue(strlen($trackEvent->data));
                 $packet .= $trackEvent->data;
 
                 $lastEventType = null;
             } else {
-                if (!$this->useNoteOffEvent && $trackEvent->type == 'noteOff') {
-                    $trackEvent = clone $trackEvent;
-                    $trackEvent->type = 'noteOn';
-                    $trackEvent->velocity = 0;
-                }
-
-                if (array_key_exists($trackEvent->type, $eventTypeMapping)) {
-                    $eventType = $eventTypeMapping[$trackEvent->type];
-                } elseif (preg_match('/^id:(\d+)$/', $trackEvent->type, $matches)) {
-                    $eventType = (int) $matches[1];
-                } else {
-                    $this->log('Unknown event type "' . $trackEvent->type . '"');
-                    continue;
-                }
-
-                $eventType = ($eventType << 4) | $trackEvent->channel;
                 $skipEventType = false;
 
                 if ($this->useRunningStatus && $lastEventType !== null) {
@@ -663,15 +702,13 @@ class MidiFile {
                     $packet .= pack('C', $eventType);
                 }
 
-                $lastEventType = $eventType;
-
                 if ($trackEvent->type == 'noteOff') {
                     $packet .= pack('C', $this->mapNoteToMidi($trackEvent->note));
                     $packet .= pack('C', $trackEvent->velocity);
                 } elseif ($trackEvent->type == 'noteOn') {
                     $packet .= pack('C', $this->mapNoteToMidi($trackEvent->note));
                     $packet .= pack('C', $trackEvent->velocity);
-                } elseif ($trackEvent->type == 'noteAftertouch') {
+                } elseif ($trackEvent->type == 'keyPressure') {
                     $packet .= pack('C', $this->mapNoteToMidi($trackEvent->note));
                     $packet .= pack('C', $trackEvent->amount);
                 } elseif ($trackEvent->type == 'controller') {
@@ -688,11 +725,13 @@ class MidiFile {
                     $packet .= pack('C', $trackEvent->value);
                 } elseif ($trackEvent->type == 'programChange') {
                     $packet .= pack('C', $trackEvent->programType);
-                } elseif ($trackEvent->type == 'channelAftertouch') {
+                } elseif ($trackEvent->type == 'channelKeyPressure') {
                     $packet .= pack('C', $trackEvent->amount);
                 } elseif ($trackEvent->type == 'pitchBend') {
                     $packet .= pack('v', $trackEvent->value);
                 }
+
+                $lastEventType = $eventType;
             }
 
             $chunk .= $packet;

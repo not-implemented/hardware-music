@@ -45,8 +45,8 @@ class MidiEditorExample {
             if ($track->instrumentName !== null) {
                 echo '  Instrument name: ' . $track->instrumentName . PHP_EOL;
             }
-            if ($track->copyrightNotice !== null) {
-                echo '  Copyright: ' . $track->copyrightNotice . PHP_EOL;
+            if ($track->copyright !== null) {
+                echo '  Copyright: ' . $track->copyright . PHP_EOL;
             }
 
             if ($track->programTypes !== null) {

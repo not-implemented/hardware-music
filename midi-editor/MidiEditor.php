@@ -12,7 +12,7 @@ class MidiEditor {
         foreach ($midiFile->tracks as $track) {
             $track->trackName = null;
             $track->instrumentName = null;
-            $track->copyrightNotice = null;
+            $track->copyright = null;
             $track->programTypes = array();
             $track->noteCountPerChannel = array();
 
@@ -22,8 +22,8 @@ class MidiEditor {
                         $track->trackName = $trackEvent->text;
                     } elseif ($trackEvent->metaType == 'instrumentName') {
                         $track->instrumentName = $trackEvent->text;
-                    } elseif ($trackEvent->metaType == 'copyrightNotice') {
-                        $track->copyrightNotice = $trackEvent->text;
+                    } elseif ($trackEvent->metaType == 'copyright') {
+                        $track->copyright = $trackEvent->text;
                     }
                 }
 
