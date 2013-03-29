@@ -51,6 +51,11 @@ if (isset($_REQUEST['file'])) {
         $binaryNoteRenderer->track = $midiEditor->selectTrack;
         $binaryNoteRenderer->channel = $midiEditor->selectChannel;
         $binaryNoteRenderer->save('scanner-output.bin', $selectedMidiFile);
+
+        if (isset($_REQUEST['play'])) {
+            echo 'Playing file ... <br/>'; ob_flush(); flush();
+            system('../stepper-motor-player/stepper-motor-player scanner-output.bin 2>&1');
+        }
     }
 
     foreach ($selectedMidiFile->logMessages as $logMessage) {
@@ -128,7 +133,7 @@ foreach (glob($midiPath . '/*.mid') as $filename) {
                 <?php endforeach; ?>
             </select>
             <input type="submit" value="Apply" />
-            <input type="button" name="play" value="Play" />
+            <input type="submit" name="play" value="Play" />
             <a href="output.mid">Preview modified MIDI</a>
         </form>
         <hr />
