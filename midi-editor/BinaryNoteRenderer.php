@@ -1,6 +1,6 @@
 <?php
 
-class ScannerRenderer extends NoteRenderer {
+class BinaryNoteRenderer extends NoteRenderer {
     public function render($midiFile) {
         $scannerData = '';
 

@@ -3,7 +3,7 @@
 require_once 'MidiFile.php';
 require_once 'MidiEditor.php';
 require_once 'NoteRenderer.php';
-require_once 'ScannerRenderer.php';
+require_once 'BinaryNoteRenderer.php';
 
 $midiEditorExample = new MidiEditorExample();
 $midiEditorExample->main();
@@ -31,10 +31,10 @@ class MidiEditorExample {
             echo $logMessage . PHP_EOL;
         }
 
-        $scannerRenderer = new ScannerRenderer();
-        $scannerRenderer->trackId = 1;
-        $scannerRenderer->channel = 0;
-        $scannerRenderer->save('Ungarischer Tanz (scanner output).bin', $midiFile);
+        $binaryNoteRenderer = new BinaryNoteRenderer();
+        $binaryNoteRenderer->trackId = 1;
+        $binaryNoteRenderer->channel = 0;
+        $binaryNoteRenderer->save('Ungarischer Tanz (scanner output).bin', $midiFile);
     }
 
     public function printTrackInfo($midiFile) {
