@@ -12,7 +12,8 @@
 #include "gb_common.h"
 
 
-uint gpioPins[4] = {2, 17, 3, 18};
+// 4 pins for stepper, last is the enable pin:
+uint gpioPins[5] = {2, 17, 3, 18, 4};
 uint maxPosition = 4000;
 uint microsecondsOverhead = 76;
 
@@ -29,10 +30,15 @@ typedef struct {
 
 void setupGpio() {
     uint i;
-    for (i = 0; i < 4; i++) {
+    for (i = 0; i < 5; i++) {
         INP_GPIO(gpioPins[i]);
         OUT_GPIO(gpioPins[i]);
     }
+}
+
+void motorOn() {
+    // enable H-bridge:
+    GPIO_SET0 = 1 << gpioPins[4];
 }
 
 void motorOff() {
@@ -40,6 +46,9 @@ void motorOff() {
     for (i = 0; i < 4; i++) {
         GPIO_CLR0 = 1 << gpioPins[i];
     }
+
+    // disable H-bridge:
+    GPIO_CLR0 = 1 << gpioPins[4];
 }
 
 void motorStep(uint delay) {
@@ -80,6 +89,8 @@ void playFile(const char *content, uint size) {
         if (note->pause > 0) {
             usleep(note->pause);
         }
+
+        motorOn();
 
         steps = note->duration * note->frequency / 1000000;
         delay = 1000000 / note->frequency - microsecondsOverhead;
