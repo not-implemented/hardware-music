@@ -14,7 +14,7 @@
 
 // 4 pins for stepper, last is the enable pin:
 uint gpioPins[5] = {2, 17, 3, 18, 4};
-uint maxPosition = 4000;
+int maxPosition = 4000;
 uint microsecondsOverhead = 76;
 
 int currentPosition = 0;
@@ -76,8 +76,8 @@ void motorStep(uint delay) {
 void playFile(const char *content, uint size) {
     Note *notes = (Note *) content;
     uint countNotes = size / sizeof(Note);
-    uint steps, delay;
-    uint n, s;
+    int steps, delay;
+    int n, s;
 
     printf("Playing %d notes\n", countNotes);
 
