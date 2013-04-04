@@ -63,66 +63,72 @@ class MidiFile {
     private $controllerTypeMapping = array(
         0x00 => 'bankSelect',
         0x01 => 'modulation',
-        /*
-        0x02 => 'Breath Controller',
-        0x04 => 'Foot Controller',
-        0x05 => 'Portamento Time',
-        0x06 => 'Data Entry (MSB)',
-        */
+        0x02 => 'breathController',
+        0x04 => 'footController',
+        0x05 => 'portamentoTime',
+        0x06 => 'dataEntry',
         0x07 => 'mainVolume',
-        /*
-        0x08 => 'Balance',
-        */
+        0x08 => 'balance',
         0x0a => 'pan',
         0x0b => 'expression',
-        /*
-        0x0c => 'Effect Control 1',
-        0x0d => 'Effect Control 2',
-        0x10 => 'General-Purpose Controller 1',
-        0x11 => 'General-Purpose Controller 2',
-        0x12 => 'General-Purpose Controller 3',
-        0x13 => 'General-Purpose Controller 4',
-        */
+        0x0c => 'effectControl1',
+        0x0d => 'effectControl2',
+        0x10 => 'generalPurposeController1',
+        0x11 => 'generalPurposeController2',
+        0x12 => 'generalPurposeController3',
+        0x13 => 'generalPurposeController4',
 
         // 0x20-0x3f: LSB for Controllers 0x00-0x1f (rarely implemented)
         0x20 => 'bankSelect_lsb',
+        0x21 => 'modulation_lsb',
+        0x22 => 'breathController_lsb',
+        0x24 => 'footController_lsb',
+        0x25 => 'portamentoTime_lsb',
+        0x26 => 'dataEntry_lsb',
+        0x27 => 'mainVolume_lsb',
+        0x28 => 'balance_lsb',
+        0x2a => 'pan_lsb',
+        0x2b => 'expression_lsb',
+        0x2c => 'effectControl1_lsb',
+        0x2d => 'effectControl2_lsb',
+        0x30 => 'generalPurposeController1_lsb',
+        0x31 => 'generalPurposeController2_lsb',
+        0x32 => 'generalPurposeController3_lsb',
+        0x33 => 'generalPurposeController4_lsb',
 
         0x40 => 'sustain',
-        /*
-        0x41 => 'Portamento',
-        0x42 => 'Sostenuto',
-        0x43 => 'Soft Pedal',
-        0x44 => 'Legato Footswitch',
-        0x45 => 'Hold 2',
-        0x46 => 'Sound Controller 1', // default: Timber Variation
-        0x47 => 'Sound Controller 2', // default: Timber/Harmonic Content
-        0x48 => 'Sound Controller 3', // default: Release Time
-        0x49 => 'Sound Controller 4', // default: Attack Time
-        0x4a => 'Sound Controller 5',
-        0x4b => 'Sound Controller 6',
-        0x4c => 'Sound Controller 7',
-        0x4d => 'Sound Controller 8',
-        0x4e => 'Sound Controller 9',
-        0x4f => 'Sound Controller 10',
-        0x50 => 'General-Purpose Controller 5',
-        0x51 => 'General-Purpose Controller 6',
-        0x52 => 'General-Purpose Controller 7',
-        0x53 => 'General-Purpose Controller 8',
-        0x54 => 'Portamento Control',
-        */
+        0x41 => 'portamento',
+        0x42 => 'sostenuto',
+        0x43 => 'softPedal',
+        0x44 => 'legatoFootswitch',
+        0x45 => 'hold2',
+        0x46 => 'soundController1', // default: Timber Variation
+        0x47 => 'soundController2', // default: Timber/Harmonic Content
+        0x48 => 'soundController3', // default: Release Time
+        0x49 => 'soundController4', // default: Attack Time
+        0x4a => 'soundController5',
+        0x4b => 'soundController6',
+        0x4c => 'soundController7',
+        0x4d => 'soundController8',
+        0x4e => 'soundController9',
+        0x4f => 'soundController10',
+        0x50 => 'generalPurposeController5',
+        0x51 => 'generalPurposeController6',
+        0x52 => 'generalPurposeController7',
+        0x53 => 'generalPurposeController8',
+        0x54 => 'portamentoControl',
         0x5b => 'effect1Depth', // formerly External Effects Depth
         0x5c => 'effect2Depth', // formerly Tremolo Depth
         0x5d => 'effect3Depth', // formerly Chorus Depth
-        /*
-        0x5e => 'Effects 4 Depth', // formerly Celeste Detune
-        0x5f => 'Effects 5 Depth', // formerly Phaser Depth
-        0x60 => 'Data Increment',
-        0x61 => 'Data Decrement',
-        0x62 => 'Non-Registered Parameter Number (LSB)',
-        0x63 => 'Non-Registered Parameter Number (MSB)',
-        0x64 => 'Registered Parameter Number (LSB)',
-        0x65 => 'Registered Parameter Number (MSB)',
-        */
+        0x5e => 'effect4Depth', // formerly Celeste Detune
+        0x5f => 'effect5Depth', // formerly Phaser Depth
+        0x60 => 'dataIncrement',
+        0x61 => 'dataDecrement',
+        0x62 => 'nonRegisteredParameterNumber_lsb',
+        0x63 => 'nonRegisteredParameterNumber', // MSB
+        0x64 => 'registeredParameterNumber_lsb',
+        0x65 => 'registeredParameterNumber', // MSB
+
         0x78 => 'allSoundOff',
         0x79 => 'resetAllControllers',
         0x7a => 'localControl',
