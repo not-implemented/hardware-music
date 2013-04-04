@@ -495,7 +495,7 @@ class MidiFile {
                         $this->log('TODO: Parse meta event type "' . $trackEvent->metaType . '"');
                         $trackEvent->data = $metaData;
                     } elseif ($metaEventType >= 0x01 && $metaEventType <= 0x0f) {
-                        $trackEvent->text = $metaData;
+                        $trackEvent->text = iconv('Windows-1252', 'utf-8', rtrim($metaData, "\0"));
                     } else {
                         $trackEvent->data = $metaData;
                     }
@@ -692,7 +692,7 @@ class MidiFile {
                 } elseif ($trackEvent->metaType == 'keySignature') {
                     $metaData = $trackEvent->data;
                 } elseif ($metaEventType >= 0x01 && $metaEventType <= 0x0f) {
-                    $metaData = $trackEvent->text;
+                    $metaData = iconv('utf-8', 'Windows-1252//TRANSLIT', $trackEvent->text);
                 } else {
                     $metaData = $trackEvent->data;
                 }
