@@ -8,6 +8,7 @@
 class MidiFile {
     public $header;
     public $tracks;
+    public $appendage;
     public $useNoteOffEvent;
     public $useRunningStatus;
     public $logMessages;
@@ -306,6 +307,7 @@ class MidiFile {
     public function __construct() {
         $this->header = (object) array('type' => 1, 'timeDivision' => 480);
         $this->tracks = array();
+        $this->appendage = null;
         $this->useNoteOffEvent = true;
         $this->useRunningStatus = true;
         $this->logMessages = array();
@@ -337,58 +339,67 @@ class MidiFile {
     public function parse($binaryMidi) {
         $this->header = null;
         $this->tracks = array();
+        $this->appendage = null;
         $this->useNoteOffEvent = false;
         $this->useRunningStatus = false;
 
-        $chunks = $this->splitChunks($binaryMidi);
-        $headerChunk = array_shift($chunks);
+        $offset = 0;
+
+        $headerChunk = $this->parseChunk('MThd', $binaryMidi, $offset);
+        if ($headerChunk === null) {
+            throw new Exception('MIDI header chunk not found');
+        }
 
         $this->header = $this->parseHeaderChunk($headerChunk);
 
-        if ($this->header->trackCount !== count($chunks)) {
-            $this->log('Track count in header "' . $this->header->trackCount . '" does not match real track count "' . count($chunks) . '"');
+        while (count($this->tracks) < $this->header->trackCount) {
+            $chunk = $this->parseChunk('MTrk', $binaryMidi, $offset);
+            if ($chunk === null) {
+                break;
+            }
+
+            $this->tracks[] = $this->parseTrackChunk($chunk);
         }
 
-        unset($this->header->trackCount);
+        if (count($this->tracks) !== $this->header->trackCount) {
+            $this->log('Expected ' . $this->header->trackCount . ' tracks - got ' . count($this->tracks) . ' tracks');
+        }
+        unset($this->header->trackCount); // avoid redundant information
 
-        foreach ($chunks as $chunk) {
-            $this->tracks[] = $this->parseTrackChunk($chunk);
+        if (strlen($binaryMidi) - $offset > 0) {
+            $this->appendage = substr($binaryMidi, $offset);
         }
     }
 
-    private function splitChunks($binaryMidi) {
-        $chunks = array();
-        $offset = 0;
-
-        while ($offset < strlen($binaryMidi)) {
-            if (strlen($binaryMidi) - $offset < 8) {
-                $this->log('Incomplete chunk header (expected 8 bytes - got ' . (strlen($binaryMidi) - $offset) . ' bytes)');
-                break;
-            }
-
-            $signature = substr($binaryMidi, $offset, 4);
-            $offset += 4;
-            $expectedSignature = count($chunks) == 0 ? 'MThd' : 'MTrk';
-
-            if ($signature !== $expectedSignature) {
-                $this->log('Invalid chunk signature "' . $signature . '" (expected "' . $expectedSignature . '")');
-                break;
-            }
-
-            $chunkLength = unpack('Nlength', substr($binaryMidi, $offset, 4));
-            $offset += 4;
-            $chunkLength = $chunkLength['length'];
-
-            if (strlen($binaryMidi) - $offset < $chunkLength) {
-                $this->log('Incomplete chunk (expected ' . $chunkLength . ' bytes - got ' . (strlen($binaryMidi) - $offset) . ' bytes)');
-                $chunkLength = strlen($binaryMidi) - $offset;
-            }
-
-            $chunks[] = substr($binaryMidi, $offset, $chunkLength);
-            $offset += $chunkLength;
+    private function parseChunk($expectedSignature, $binaryMidi, &$offset) {
+        if ($offset >= strlen($binaryMidi)) {
+            return null; // EOF
         }
 
-        return $chunks;
+        if (strlen($binaryMidi) - $offset < 8) {
+            $this->log('Incomplete chunk header (expected 8 bytes - got ' . (strlen($binaryMidi) - $offset) . ' bytes)');
+            return null;
+        }
+
+        $signature = substr($binaryMidi, $offset, 4);
+        if ($signature !== $expectedSignature) {
+            $this->log('Invalid chunk signature "' . $signature . '" (expected "' . $expectedSignature . '")');
+            return null;
+        }
+
+        $chunkLength = unpack('Nlength', substr($binaryMidi, $offset + 4, 4));
+        $chunkLength = $chunkLength['length'];
+        $offset += 8;
+
+        if (strlen($binaryMidi) - $offset < $chunkLength) {
+            $this->log('Incomplete chunk (expected ' . $chunkLength . ' bytes - got ' . (strlen($binaryMidi) - $offset) . ' bytes)');
+            $chunkLength = strlen($binaryMidi) - $offset;
+        }
+
+        $chunk = substr($binaryMidi, $offset, $chunkLength);
+        $offset += $chunkLength;
+
+        return $chunk;
     }
 
     private function parseHeaderChunk($headerChunk) {
@@ -593,8 +604,8 @@ class MidiFile {
     public function render() {
         $chunks = array();
 
-        $header = pack('nnn', $this->header->type, count($this->tracks), $this->header->timeDivision);
-        $chunks[] = $header;
+        $headerChunk = pack('nnn', $this->header->type, count($this->tracks), $this->header->timeDivision);
+        $chunks[] = $headerChunk;
 
         foreach ($this->tracks as $track) {
             $chunks[] = $this->renderTrackChunk($track);
@@ -607,6 +618,10 @@ class MidiFile {
 
             $binaryMidi .= $signature . pack('N', strlen($chunk));
             $binaryMidi .= $chunk;
+        }
+
+        if ($this->appendage !== null) {
+            $binaryMidi .= $this->appendage;
         }
 
         return $binaryMidi;
