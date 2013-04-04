@@ -504,8 +504,9 @@ class MidiFile {
                         $trackEvent->metronomeTimePerClick = $this->parseByte($metaData, $metaDataOffset);
                         $trackEvent->count32ndNotesPerQuarter = $this->parseByte($metaData, $metaDataOffset);
                     } elseif ($trackEvent->metaType == 'keySignature') {
-                        $this->log('TODO: Parse meta event type "' . $trackEvent->metaType . '"');
-                        $trackEvent->data = $metaData;
+                        $byte = unpack('cbyte', pack('C', $this->parseByte($metaData, $metaDataOffset)));
+                        $trackEvent->fifths = $byte['byte'];
+                        $trackEvent->mode = $this->parseByte($metaData, $metaDataOffset) == 0 ? 'major' : 'minor';
                     } elseif ($metaEventType >= 0x01 && $metaEventType <= 0x0f) {
                         $trackEvent->text = iconv('Windows-1252', 'utf-8', rtrim($metaData, "\0"));
                     } else {
@@ -710,7 +711,9 @@ class MidiFile {
                     $metaData .= pack('C', $trackEvent->metronomeTimePerClick);
                     $metaData .= pack('C', $trackEvent->count32ndNotesPerQuarter);
                 } elseif ($trackEvent->metaType == 'keySignature') {
-                    $metaData = $trackEvent->data;
+                    $metaData = '';
+                    $metaData .= pack('c', $trackEvent->fifths);
+                    $metaData .= pack('C', $trackEvent->mode == 'minor' ? 1 : 0);
                 } elseif ($metaEventType >= 0x01 && $metaEventType <= 0x0f) {
                     $metaData = iconv('utf-8', 'Windows-1252//TRANSLIT', $trackEvent->text);
                 } else {
