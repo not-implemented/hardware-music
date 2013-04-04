@@ -302,6 +302,13 @@ class MidiFile {
         127 => 'Gunshot',
     );
 
+    private $frameRateMapping = array(
+        0 => '24fps',
+        1 => '25fps',
+        2 => '29.97fps',
+        3 => '30fps',
+    );
+
     private $noteMapping = array('C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'B', 'H');
 
     public function __construct() {
@@ -484,8 +491,13 @@ class MidiFile {
                         $tempo = ($byte1 << 16) | ($byte2 << 8) | $byte3; // microseconds per quarter note
                         $trackEvent->tempoBpm = round(60000000 / $tempo, 6);
                     } elseif ($trackEvent->metaType == 'smpteOffset') {
-                        $this->log('TODO: Parse meta event type "' . $trackEvent->metaType . '"');
-                        $trackEvent->data = $metaData;
+                        $byte = $this->parseByte($metaData, $metaDataOffset);
+                        $trackEvent->frameRate = $this->frameRateMapping[$byte >> 5];
+                        $trackEvent->hours = $byte & 0x1f;
+                        $trackEvent->minutes = $this->parseByte($metaData, $metaDataOffset);
+                        $trackEvent->seconds = $this->parseByte($metaData, $metaDataOffset);
+                        $trackEvent->frames = $this->parseByte($metaData, $metaDataOffset);
+                        $trackEvent->subFrames = $this->parseByte($metaData, $metaDataOffset);
                     } elseif ($trackEvent->metaType == 'timeSignature') {
                         $trackEvent->numerator = $this->parseByte($metaData, $metaDataOffset);
                         $trackEvent->denominator = pow(2, $this->parseByte($metaData, $metaDataOffset));
@@ -581,13 +593,13 @@ class MidiFile {
         return $value;
     }
 
-    private function parseByte($chunk, &$offset) {
-        if ($offset >= strlen($chunk)) {
-            $this->log('Unexpected end of chunk');
+    private function parseByte($data, &$offset) {
+        if ($offset >= strlen($data)) {
+            $this->log('Unexpected end of data');
             return 0;
         }
 
-        $byte = substr($chunk, $offset, 1);
+        $byte = substr($data, $offset, 1);
         $byte = unpack('Cbyte', $byte);
         $byte = $byte['byte'];
 
@@ -633,6 +645,7 @@ class MidiFile {
         $eventTypeMapping = array_flip($this->eventTypeMapping);
         $metaEventTypeMapping = array_flip($this->metaEventTypeMapping);
         $controllerTypeMapping = array_flip($this->controllerTypeMapping);
+        $frameRateMapping = array_flip($this->frameRateMapping);
 
         $lastEventType = null;
 
@@ -682,7 +695,14 @@ class MidiFile {
                     $metaData = pack('N', $tempo);
                     $metaData = substr($metaData, 1); // 3 byte only
                 } elseif ($trackEvent->metaType == 'smpteOffset') {
-                    $metaData = $trackEvent->data;
+                    $frameRate = $frameRateMapping[$trackEvent->frameRate];
+                    $byte = ($frameRate << 5) | $trackEvent->hours;
+                    $metaData = '';
+                    $metaData .= pack('C', $byte);
+                    $metaData .= pack('C', $trackEvent->minutes);
+                    $metaData .= pack('C', $trackEvent->seconds);
+                    $metaData .= pack('C', $trackEvent->frames);
+                    $metaData .= pack('C', $trackEvent->subFrames);
                 } elseif ($trackEvent->metaType == 'timeSignature') {
                     $metaData = '';
                     $metaData .= pack('C', $trackEvent->numerator);
