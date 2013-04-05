@@ -9,8 +9,11 @@ class MidiFile {
     public $header;
     public $tracks;
     public $appendage;
+
+    public $charset;
     public $useNoteOffEvent;
     public $useRunningStatus;
+
     public $logMessages;
 
     private $eventTypeMapping = array(
@@ -315,8 +318,11 @@ class MidiFile {
         $this->header = (object) array('type' => 1, 'timeDivision' => 480);
         $this->tracks = array();
         $this->appendage = null;
+
+        $this->charset = 'pass';
         $this->useNoteOffEvent = true;
         $this->useRunningStatus = true;
+
         $this->logMessages = array();
     }
 
@@ -347,6 +353,7 @@ class MidiFile {
         $this->header = null;
         $this->tracks = array();
         $this->appendage = null;
+
         $this->useNoteOffEvent = false;
         $this->useRunningStatus = false;
 
@@ -508,7 +515,8 @@ class MidiFile {
                         $trackEvent->fifths = $byte['byte'];
                         $trackEvent->mode = $this->parseByte($metaData, $metaDataOffset) == 0 ? 'major' : 'minor';
                     } elseif ($metaEventType >= 0x01 && $metaEventType <= 0x0f) {
-                        $trackEvent->text = iconv('Windows-1252', 'utf-8', rtrim($metaData, "\0"));
+                        $trackEvent->text = rtrim($metaData, "\0"); // some applications save the NUL-Byte
+                        $trackEvent->text = mb_convert_encoding($trackEvent->text, 'utf-8', $this->charset);
                     } else {
                         $trackEvent->data = $metaData;
                     }
@@ -715,7 +723,7 @@ class MidiFile {
                     $metaData .= pack('c', $trackEvent->fifths);
                     $metaData .= pack('C', $trackEvent->mode == 'minor' ? 1 : 0);
                 } elseif ($metaEventType >= 0x01 && $metaEventType <= 0x0f) {
-                    $metaData = iconv('utf-8', 'Windows-1252//TRANSLIT', $trackEvent->text);
+                    $metaData = mb_convert_encoding($trackEvent->text, $this->charset, 'utf-8');
                 } else {
                     $metaData = $trackEvent->data;
                 }
