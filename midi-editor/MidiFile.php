@@ -427,7 +427,9 @@ class MidiFile {
             $this->log('Invalid MIDI format type "' . $header->type . '"');
         }
 
-        // TODO: Handle timeDivision in ticks per frame / frames per second
+        if ($header->timeDivision >= 0x8000) {
+            $this->log('TODO: Handle timeDivision in ticks per frame / frames per second');
+        }
 
         return $header;
     }
