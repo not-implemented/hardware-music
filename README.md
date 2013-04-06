@@ -6,18 +6,27 @@ midi-editor
 ------------
 A compact MIDI parser/writer implementation in PHP for manipulation of MIDI files.
 
-Features MidiEditor:
+MidiFile:
+- Almost complete standalone implementation of MIDI-File-Reader/Writer
+- Simple object tree of MIDI tracks for easy manipulation
+- Many things are mapped from numbers into a readable form
+- Charset support (if set, all text events are converted from this charset to utf-8)
+- Very error-forgiving implementation (tries to recover from most cases - log errors only)
+- Most MIDI-files are bit-identical after parsing/writing
+
+MidiEditor:
 - Automatic manipulation of MIDI files to fit old hardware
+- Merge all tracks into one (to make global events like setTempo and deltaTime handling easier/possible)
 - Track/Channel selection
 - Change instrument
 - Change volume
 - Transpose high notes down
 - Remove short pauses (for fluent playing)
 
-Features BinaryNoteRenderer:
+BinaryNoteRenderer:
 - Render notes to a binary file for playing them with stepper-motor-player
 
-Features MidiGenerator:
+MidiGenerator:
 - Convert notes in form "D5:1/8 D5:1/8 H4:1/8 C5:1/4 A4:1/4" to MIDI files
 - Set tempo in bpm
 - Set instrument
