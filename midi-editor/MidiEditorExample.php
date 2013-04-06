@@ -32,7 +32,7 @@ class MidiEditorExample {
         }
 
         $binaryNoteRenderer = new BinaryNoteRenderer();
-        $binaryNoteRenderer->track = $midiEditor->selectTrack;
+        $binaryNoteRenderer->track = 0;
         $binaryNoteRenderer->channel = $midiEditor->selectChannel;
         $binaryNoteRenderer->save('Ungarischer Tanz (scanner output).bin', $midiFile);
     }

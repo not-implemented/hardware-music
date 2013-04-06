@@ -48,7 +48,7 @@ if (isset($_REQUEST['file'])) {
         $selectedMidiFile->save('output.mid');
 
         $binaryNoteRenderer = new BinaryNoteRenderer();
-        $binaryNoteRenderer->track = $midiEditor->selectTrack;
+        $binaryNoteRenderer->track = 0;
         $binaryNoteRenderer->channel = $midiEditor->selectChannel;
         $binaryNoteRenderer->save('scanner-output.bin', $selectedMidiFile);
 
