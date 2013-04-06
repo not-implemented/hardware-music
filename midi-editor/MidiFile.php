@@ -380,6 +380,11 @@ class MidiFile {
         }
         unset($this->header->trackCount); // avoid redundant information
 
+        if (count($this->tracks) > 1 && $this->header->type == 0) {
+            $this->header->type = 1;
+            $this->log('MIDI type 0 file with ' . count($this->tracks) . ' tracks - changed type to 1');
+        }
+
         if (strlen($binaryMidi) - $offset > 0) {
             $this->appendage = substr($binaryMidi, $offset);
         }
@@ -427,7 +432,7 @@ class MidiFile {
             $this->log('Invalid MIDI format type "' . $header->type . '"');
         }
 
-        if ($header->timeDivision >= 0x8000) {
+        if ($header->timeDivision & 0x8000) {
             $this->log('TODO: Handle timeDivision in ticks per frame / frames per second');
         }
 
