@@ -11,12 +11,12 @@ $midiEditorExample->main();
 class MidiEditorExample {
     public function main() {
         $midiFile = new MidiFile();
-        $midiFile->load('midi/Ungarischer Tanz.mid');
+        $midiFile->load('../web-interface/midi-files/Ungarischer Tanz.mid');
 
         $midiEditor = new MidiEditor();
         $midiEditor->selectTrack = 0;
         $midiEditor->selectChannel = 0;
-        $midiEditor->modifyProgramType = 40;
+        $midiEditor->modifyProgram = 40;
         $midiEditor->modifyVelocity = 127;
         $midiEditor->highestNote = 'E6';
         $midiEditor->minimalPause = 100000;
@@ -49,8 +49,8 @@ class MidiEditorExample {
                 echo '  Copyright: ' . $track->copyright . PHP_EOL;
             }
 
-            if ($track->programTypes !== null) {
-                echo '  Used instruments: ' . implode(', ', $track->programTypes) . PHP_EOL;
+            if ($track->programNames !== null) {
+                echo '  Used instruments: ' . implode(', ', $track->programNames) . PHP_EOL;
             }
 
             if (count($track->noteCountPerChannel) > 0) {

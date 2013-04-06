@@ -3,7 +3,7 @@
 class MidiEditor {
     public $selectTrack = 0;
     public $selectChannel = 0;
-    public $modifyProgramType = null;
+    public $modifyProgram = null;
     public $modifyVelocity = null;
     public $highestNote = 'G9';
     public $minimalPause = null;
@@ -13,7 +13,7 @@ class MidiEditor {
             $track->trackName = null;
             $track->instrumentName = null;
             $track->copyright = null;
-            $track->programTypes = array();
+            $track->programNames = array();
             $track->noteCountPerChannel = array();
 
             foreach ($track->events as $trackEvent) {
@@ -28,7 +28,7 @@ class MidiEditor {
                 }
 
                 if ($trackEvent->type == 'programChange') {
-                    $track->programTypes[$trackEvent->programType] = $midiFile->getProgramTypeName($trackEvent->programType);
+                    $track->programNames[$trackEvent->number] = $midiFile->getProgramName($trackEvent->number);
                 }
 
                 if ($trackEvent->type == 'noteOn') {
@@ -110,7 +110,7 @@ class MidiEditor {
         $deltaTimeCarryover = 0;
         $playingNote = array();
         $lastNote = null;
-        $programTypeSet = array();
+        $programSet = array();
         $tempoBpm = 120;
 
         $highestNote = $midiFile->mapNoteToMidi($this->highestNote);
@@ -149,12 +149,12 @@ class MidiEditor {
 
             if ($trackEvent->type == 'noteOn') {
                 // insert programChange event if not present:
-                if ($this->modifyProgramType !== null && !isset($programTypeSet[$trackEvent->channel])) {
+                if ($this->modifyProgram !== null && !isset($programSet[$trackEvent->channel])) {
                     $trackEvents[] = (object) array(
                         'deltaTime' => 0,
                         'type' => 'programChange',
                         'channel' => $trackEvent->channel,
-                        'programType' => $this->modifyProgramType,
+                        'number' => $this->modifyProgram,
                     );
                 }
 
@@ -217,10 +217,10 @@ class MidiEditor {
                 $playingNote[$trackEvent->channel] = null;
                 $lastNote = $trackEvent;
             } elseif ($trackEvent->type == 'programChange') {
-                if ($this->modifyProgramType !== null) {
-                    $trackEvent->programType = $this->modifyProgramType;
+                if ($this->modifyProgram !== null) {
+                    $trackEvent->number = $this->modifyProgram;
                 }
-                $programTypeSet[$trackEvent->channel] = true;
+                $programSet[$trackEvent->channel] = true;
             } elseif ($trackEvent->type == 'meta' && $trackEvent->metaType == 'timeSignature') {
                 // keep time signature
             } elseif ($trackEvent->type == 'meta' && $trackEvent->metaType == 'trackName') {

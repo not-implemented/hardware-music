@@ -9,7 +9,7 @@ $midiGeneratorExample->main();
 class MidiGeneratorExample {
     public function main() {
         $midiGenerator = new MidiGenerator();
-        $midiGenerator->programType = 40;
+        $midiGenerator->program = 40;
 
         // Sieben Tage lang:
         $notes = array(

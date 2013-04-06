@@ -39,7 +39,7 @@ if (isset($_REQUEST['file'])) {
 
         $midiEditor->selectTrack = $track;
         $midiEditor->selectChannel = $channel;
-        $midiEditor->modifyProgramType = 40;
+        $midiEditor->modifyProgram = 40;
         $midiEditor->modifyVelocity = 127;
         $midiEditor->highestNote = 'E6';
         $midiEditor->minimalPause = 100000;
@@ -105,8 +105,8 @@ foreach (glob($midiPath . '/*.mid') as $filename) {
                         Copyright: <?= $track->copyright ?><br />
                     <?php endif; ?>
 
-                    <?php if ($track->programTypes !== null): ?>
-                        Used instruments: <?= implode(', ', $track->programTypes) ?><br />
+                    <?php if ($track->programNames !== null): ?>
+                        Used instruments: <?= implode(', ', $track->programNames) ?><br />
                     <?php endif; ?>
 
                     <?php if (count($track->noteCountPerChannel) > 0): ?>

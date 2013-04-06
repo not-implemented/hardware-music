@@ -20,25 +20,25 @@ class MidiFile {
         // Voice category events (second nibble contains channel):
         0x8 => 'noteOff',
         0x9 => 'noteOn',
-        0xa => 'keyPressure',
-        0xb => 'controller',
+        0xa => 'polyKeyPressure',
+        0xb => 'controlChange',
         0xc => 'programChange',
         0xd => 'channelKeyPressure',
-        0xe => 'pitchBend',
+        0xe => 'pitchBendChange',
 
         // System common category events:
-        0xf0 => 'systemExclusive',
-        0xf1 => 'midiTimeCode',
+        0xf0 => 'sysEx',
+        0xf1 => 'mtcQuarterFrame',
         0xf2 => 'songPositionPointer',
         0xf3 => 'songSelect',
         0xf6 => 'tuneRequest',
-        0xf7 => 'endSystemExclusive',
+        0xf7 => 'endSysEx',
 
         // Realtime category events:
         0xf8 => 'timingClock',
-        0xfa => 'startPlayback',
-        0xfb => 'continuePlayback',
-        0xfc => 'stopPlayback',
+        0xfa => 'start',
+        0xfb => 'continue',
+        0xfc => 'stop',
         0xfe => 'activeSensing',
         0xff => 'meta',
     );
@@ -64,7 +64,7 @@ class MidiFile {
         0x7f => 'sequencerSpecific',
     );
 
-    private $controllerTypeMapping = array(
+    private $controlMapping = array(
         0x00 => 'bankSelect',
         0x01 => 'modulation',
         0x02 => 'breathController',
@@ -137,13 +137,13 @@ class MidiFile {
         0x79 => 'resetAllControllers',
         0x7a => 'localControl',
         0x7b => 'allNotesOff',
-        0x7c => 'omniModeOff',
-        0x7d => 'omniModeOn',
-        0x7e => 'monoModeOn',
-        0x7f => 'polyModeOn',
+        0x7c => 'omniOff',
+        0x7d => 'omniOn',
+        0x7e => 'monoMode',
+        0x7f => 'polyMode',
     );
 
-    private $programTypeNames = array(
+    private $programNames = array(
         // Piano:
         0 => 'Acoustic Grand Piano',
         1 => 'Bright Acoustic Piano',
@@ -330,14 +330,14 @@ class MidiFile {
         return (int) (($midiTime / $this->header->timeDivision) * (60 * 1000000 / $tempoBpm));
     }
 
-    public function getProgramTypeName($programType) {
-        if (array_key_exists($programType, $this->programTypeNames)) {
-            $programTypeName = $this->programTypeNames[$programType];
+    public function getProgramName($number) {
+        if (array_key_exists($number, $this->programNames)) {
+            $programName = $this->programNames[$number];
         } else {
-            $programTypeName = 'Unknown (' . $programType . ')';
+            $programName = 'Unknown (' . $number . ')';
         }
 
-        return $programTypeName;
+        return $programName;
     }
 
     public function load($filename) {
@@ -547,25 +547,25 @@ class MidiFile {
                 if ($trackEvent->velocity == 0) {
                     $trackEvent->type = 'noteOff';
                 }
-            } elseif ($trackEvent->type == 'keyPressure') {
+            } elseif ($trackEvent->type == 'polyKeyPressure') {
                 $trackEvent->note = $this->mapNoteFromMidi($this->parseByte($chunk, $offset));
-                $trackEvent->amount = $this->parseByte($chunk, $offset);
-            } elseif ($trackEvent->type == 'controller') {
-                $controllerType = $this->parseByte($chunk, $offset);
+                $trackEvent->pressure = $this->parseByte($chunk, $offset);
+            } elseif ($trackEvent->type == 'controlChange') {
+                $control = $this->parseByte($chunk, $offset);
 
-                if (array_key_exists($controllerType, $this->controllerTypeMapping)) {
-                    $trackEvent->controllerType = $this->controllerTypeMapping[$controllerType];
+                if (array_key_exists($control, $this->controlMapping)) {
+                    $trackEvent->control = $this->controlMapping[$control];
                 } else {
-                    $this->log('Unknown controller type "' . $controllerType . '"');
-                    $trackEvent->controllerType = 'id:' . $controllerType;
+                    $this->log('Unknown control "' . $control . '"');
+                    $trackEvent->control = 'id:' . $control;
                 }
 
                 $trackEvent->value = $this->parseByte($chunk, $offset);
             } elseif ($trackEvent->type == 'programChange') {
-                $trackEvent->programType = $this->parseByte($chunk, $offset);
+                $trackEvent->number = $this->parseByte($chunk, $offset);
             } elseif ($trackEvent->type == 'channelKeyPressure') {
-                $trackEvent->amount = $this->parseByte($chunk, $offset);
-            } elseif ($trackEvent->type == 'pitchBend') {
+                $trackEvent->pressure = $this->parseByte($chunk, $offset);
+            } elseif ($trackEvent->type == 'pitchBendChange') {
                 $byte1 = $this->parseByte($chunk, $offset);
                 $byte2 = $this->parseByte($chunk, $offset);
                 $trackEvent->value = ($byte2 << 8) | $byte1;
@@ -655,7 +655,7 @@ class MidiFile {
 
         $eventTypeMapping = array_flip($this->eventTypeMapping);
         $metaEventTypeMapping = array_flip($this->metaEventTypeMapping);
-        $controllerTypeMapping = array_flip($this->controllerTypeMapping);
+        $controlMapping = array_flip($this->controlMapping);
         $frameRateMapping = array_flip($this->frameRateMapping);
 
         $lastEventType = null;
@@ -761,26 +761,26 @@ class MidiFile {
                 } elseif ($trackEvent->type == 'noteOn') {
                     $packet .= pack('C', $this->mapNoteToMidi($trackEvent->note));
                     $packet .= pack('C', $trackEvent->velocity);
-                } elseif ($trackEvent->type == 'keyPressure') {
+                } elseif ($trackEvent->type == 'polyKeyPressure') {
                     $packet .= pack('C', $this->mapNoteToMidi($trackEvent->note));
-                    $packet .= pack('C', $trackEvent->amount);
-                } elseif ($trackEvent->type == 'controller') {
-                    if (array_key_exists($trackEvent->controllerType, $controllerTypeMapping)) {
-                        $controllerType = $controllerTypeMapping[$trackEvent->controllerType];
-                    } elseif (preg_match('/^id:(\d+)$/', $trackEvent->controllerType, $matches)) {
-                        $controllerType = (int) $matches[1];
+                    $packet .= pack('C', $trackEvent->pressure);
+                } elseif ($trackEvent->type == 'controlChange') {
+                    if (array_key_exists($trackEvent->control, $controlMapping)) {
+                        $control = $controlMapping[$trackEvent->control];
+                    } elseif (preg_match('/^id:(\d+)$/', $trackEvent->control, $matches)) {
+                        $control = (int) $matches[1];
                     } else {
-                        $this->log('Unknown controller type "' . $trackEvent->controllerType . '"');
+                        $this->log('Unknown control "' . $trackEvent->control . '"');
                         continue;
                     }
 
-                    $packet .= pack('C', $controllerType);
+                    $packet .= pack('C', $control);
                     $packet .= pack('C', $trackEvent->value);
                 } elseif ($trackEvent->type == 'programChange') {
-                    $packet .= pack('C', $trackEvent->programType);
+                    $packet .= pack('C', $trackEvent->number);
                 } elseif ($trackEvent->type == 'channelKeyPressure') {
-                    $packet .= pack('C', $trackEvent->amount);
-                } elseif ($trackEvent->type == 'pitchBend') {
+                    $packet .= pack('C', $trackEvent->pressure);
+                } elseif ($trackEvent->type == 'pitchBendChange') {
                     $packet .= pack('v', $trackEvent->value);
                 }
 

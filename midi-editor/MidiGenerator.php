@@ -3,7 +3,7 @@
 class MidiGenerator {
     public $timeDivision = 480;
     public $tempoBpm = 120;
-    public $programType = 0;
+    public $program = 0;
     public $velocity = 127;
 
     public function convertNotesToMidi($notes) {
@@ -34,7 +34,7 @@ class MidiGenerator {
             'deltaTime' => 0,
             'type' => 'programChange',
             'channel' => 0,
-            'programType' => $this->programType,
+            'number' => $this->program,
         );
 
         $deltaTimeCarryover = 0;
