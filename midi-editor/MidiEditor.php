@@ -43,6 +43,59 @@ class MidiEditor {
         }
     }
 
+    public function mergeTracks($midiFile) {
+        foreach ($midiFile->tracks as $track) {
+            reset($track->events);
+        }
+
+        $mergedTrack = (object) array('events' => array());
+
+        while (true) {
+            $nextDeltaTime = null;
+
+            foreach ($midiFile->tracks as $track) {
+                $currentEvent = current($track->events);
+
+                if ($currentEvent !== false) {
+                    if ($nextDeltaTime === null) {
+                        $nextDeltaTime = $currentEvent->deltaTime;
+                    } else {
+                        $nextDeltaTime = min($currentEvent->deltaTime, $nextDeltaTime);
+                    }
+                }
+            }
+
+            if ($nextDeltaTime === null) {
+                break; // EOF
+            }
+
+            $deltaTimeProcessed = false;
+
+            foreach ($midiFile->tracks as $trackId => $track) {
+                $currentEvent = current($track->events);
+                if ($currentEvent === false) {
+                    continue;
+                }
+
+                $currentEvent->deltaTime -= $nextDeltaTime;
+
+                while ($currentEvent !== false && $currentEvent->deltaTime == 0) {
+                    if (!$deltaTimeProcessed) {
+                        $currentEvent->deltaTime += $nextDeltaTime;
+                        $deltaTimeProcessed = true;
+                    }
+
+                    $currentEvent->track = $trackId;
+                    $mergedTrack->events[] = $currentEvent;
+
+                    $currentEvent = next($track->events);
+                }
+            }
+        }
+
+        $midiFile->tracks = array($mergedTrack);
+    }
+
     public function modifyTracks($midiFile) {
         // select track:
         foreach ($midiFile->tracks as $trackId => $track) {
