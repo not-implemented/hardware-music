@@ -24,6 +24,7 @@ if (isset($_FILES['uploadfile'])) {
 }
 
 $selectedMidiFile = null;
+$selectedMidiFileTracks = null;
 
 if (isset($_REQUEST['file'])) {
     $file = $_REQUEST['file'];
@@ -33,6 +34,18 @@ if (isset($_REQUEST['file'])) {
 
     $midiEditor = new MidiEditor();
     $midiEditor->analyzeTracks($selectedMidiFile);
+
+    // save original track information before modification:
+    $selectedMidiFileTracks = array();
+    foreach ($selectedMidiFile->tracks as $trackId => $track) {
+        $selectedMidiFileTracks[$trackId] = (object) array(
+            'trackName' => $track->trackName,
+            'instrumentName' => $track->instrumentName,
+            'copyright' => $track->copyright,
+            'programNames' => $track->programNames,
+            'noteCountPerChannel' => $track->noteCountPerChannel,
+        );
+    }
 
     if (isset($_REQUEST['selectTrackChannel'])) {
         list($track, $channel) = explode('/', $_REQUEST['selectTrackChannel']);
@@ -91,10 +104,10 @@ foreach (glob($midiPath . '/*.mid') as $filename) {
         </ul>
     <?php endif; ?>
 
-    <?php if ($selectedMidiFile !== null): ?>
+    <?php if ($selectedMidiFileTracks !== null): ?>
         <h2>Current selected MIDI file</h2>
         <ul>
-            <?php foreach ($selectedMidiFile->tracks as $trackId => $track): ?>
+            <?php foreach ($selectedMidiFileTracks as $trackId => $track): ?>
                 <li>
                     Track <?= $trackId . ($track->trackName !== null ? ' (' . $track->trackName . ')' : '') ?><br />
 
@@ -129,7 +142,10 @@ foreach (glob($midiPath . '/*.mid') as $filename) {
             Select Track/Channel:
             <select name="selectTrackChannel">
                 <?php foreach ($trackChannelSelection as $trackChannel => $title): ?>
-                    <option value="<?= $trackChannel ?>"><?= $title ?></option>
+                    <?php
+                    $selected = isset($_REQUEST['selectTrackChannel']) && $_REQUEST['selectTrackChannel'] == $trackChannel;
+                    ?>
+                    <option value="<?= $trackChannel ?>" <?= $selected ? 'selected' : '' ?>><?= $title ?></option>
                 <?php endforeach; ?>
             </select>
             <input type="submit" value="Apply" />
