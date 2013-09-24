@@ -119,13 +119,15 @@ class MidiEditor {
             $trackEvent->deltaTime += $deltaTimeCarryover;
             $deltaTimeCarryover = 0;
 
-            if ($trackEvent->type != 'meta') {
-                $currentTrackId = $trackId;
-                if (isset($trackEvent->track)) {
-                    $currentTrackId = $trackEvent->track;
-                }
+            $currentTrackId = $trackId;
+            if (isset($trackEvent->track)) {
+                $currentTrackId = $trackEvent->track;
+            }
 
-                if ($currentTrackId != $this->selectTrack) {
+            $isSelectedTrack = $currentTrackId == $this->selectTrack;
+
+            if ($trackEvent->type != 'meta') {
+                if (!$isSelectedTrack) {
                     $deltaTimeCarryover += $trackEvent->deltaTime;
                     continue;
                 }
@@ -223,12 +225,12 @@ class MidiEditor {
                 $programSet[$trackEvent->channel] = true;
             } elseif ($trackEvent->type == 'meta' && $trackEvent->metaType == 'timeSignature') {
                 // keep time signature
-            } elseif ($trackEvent->type == 'meta' && $trackEvent->metaType == 'trackName') {
-                // keep track name
+            } elseif ($trackEvent->type == 'meta' && $trackEvent->metaType == 'trackName' && $isSelectedTrack) {
+                // keep track name of selected track
             } elseif ($trackEvent->type == 'meta' && $trackEvent->metaType == 'setTempo') {
                 $tempoBpm = $trackEvent->tempoBpm;
-            } elseif ($trackEvent->type == 'meta' && $trackEvent->metaType == 'endOfTrack') {
-                // keep end of track marker
+            } elseif ($trackEvent->type == 'meta' && $trackEvent->metaType == 'endOfTrack' && $isSelectedTrack) {
+                // keep end of track marker of selected track
             } else {
                 $deltaTimeCarryover += $trackEvent->deltaTime;
                 continue; // discard all other events
