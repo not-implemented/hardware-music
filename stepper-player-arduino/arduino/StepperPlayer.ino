@@ -16,6 +16,7 @@
  */
 
 #include "TimerOne.h"
+#include <LiquidCrystal.h>
 
 int stepperPins[] = {8, 9, 10, 11};
 int enablePin = 12;
@@ -25,6 +26,8 @@ String serialInputLine;
 const unsigned int maxLineLength = 127;
 boolean serialInputOverflow = false;
 
+LiquidCrystal lcd(7, 6, 5, 4, 3, 2);
+
 void setup() {
     // serial:
     serialInputLine.reserve(maxLineLength + 1);
@@ -32,6 +35,10 @@ void setup() {
 
     Serial.begin(115200);
     Serial.println("ok:Welcome to StepperPlayer - Valid commands: play:<frequency>, off, reset[:<frequency>], ping");
+
+    // LCD:
+    lcd.begin(16, 2);
+    lcd.print("StepperPlayer");
 
     // stepper:
     pinMode(stepperPins[0], OUTPUT);
@@ -115,21 +122,35 @@ void processLine() {
         Serial.print(" (period = ");
         Serial.print(period);
         Serial.println(")");
+
+        lcd.clear();
+        lcd.print("Playing Hz:");
+        lcd.setCursor(0, 1);
+        lcd.print(frequency);
     } else if (command == "off") {
         Timer1.detachInterrupt();
         Timer1.stop();
         stepperOff();
 
         Serial.println("ok:Playing off");
+
+        lcd.clear();
+        lcd.print("Pause");
     } else if (command == "reset") {
         Timer1.detachInterrupt();
         Timer1.stop();
         stepperOff();
 
+        lcd.clear();
+        lcd.print("Resetting");
+
         // TODO: Implement stepper logic here
         delay(1000);
 
         Serial.println("ok:Reset complete");
+
+        lcd.clear();
+        lcd.print("Resetted");
     } else if (command == "ping") {
         Serial.println("ok:Pong!");
     } else {
