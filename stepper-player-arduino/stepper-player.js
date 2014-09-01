@@ -11,9 +11,14 @@ var StepperPlayer = function(path) {
     self.serialPort = new SerialPort(path, {
         baudrate: 115200,
         parser: serialport.parsers.readline('\n')
+    }, false);
+
+    self.serialPort.on('error', function onError(err) {
+        self.emit('error', err);
     });
 
-    self.serialPort.on('open', function onOpen() {
+    self.serialPort.open(function onOpen(err) {
+        if (err) return self.emit('error', err);
         var initialized = false;
 
         self.serialPort.on('data', function onData(data) {
