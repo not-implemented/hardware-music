@@ -117,10 +117,10 @@ void processLine() {
     }
 
     if (command == "play") {
-        if (frequency < 0.1 || frequency > 20000) {
+        if (frequency < 0.1 || frequency > 16000) {
             Serial.print("error:Invalid frequency ");
             Serial.print(frequency);
-            Serial.print(" - valid only >= 0.1 && <= 20000\n");
+            Serial.print(" - frequency < 0.1 || > 16000 not allowed\n");
             return;
         }
 
@@ -136,9 +136,10 @@ void processLine() {
         Serial.print(")\n");
 
         lcd.clear();
-        lcd.print("Playing Hz:");
+        lcd.print("Playing:");
         lcd.setCursor(0, 1);
         lcd.print(frequency);
+        lcd.print(" Hz");
     } else if (command == "off") {
         Timer1.detachInterrupt();
         Timer1.stop();
@@ -154,12 +155,14 @@ void processLine() {
         stepperOff();
 
         lcd.clear();
-        lcd.print("Resetting");
+        lcd.print("Resetting to");
+        lcd.setCursor(0, 1);
+        lcd.print("home position");
 
         // TODO: Implement stepper logic here
         delay(1000);
 
-        Serial.print("ok:Reset complete\n");
+        Serial.print("ok:Resetted to home position\n");
 
         lcd.clear();
         lcd.print("Resetted");
@@ -180,10 +183,10 @@ void moveStepper() {
 }
 
 void stepperOff() {
+    digitalWrite(stepperEnablePin, LOW);
     digitalWrite(stepperPins[0], LOW);
     digitalWrite(stepperPins[2], LOW);
     digitalWrite(stepperPins[3], LOW);
     digitalWrite(stepperPins[4], LOW);
-    digitalWrite(stepperEnablePin, LOW);
 }
 
