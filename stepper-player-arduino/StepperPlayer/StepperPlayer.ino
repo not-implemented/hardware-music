@@ -18,17 +18,36 @@
 #include "TimerOne.h"
 #include <LiquidCrystal.h>
 
-int stepperPins[] = {8, 9, 10, 11};
-int enablePin = 12;
-int ledPin = LED_BUILTIN;
+// stepper:
+uint8_t stepperPins[] = {8, 9, 10, 11};
+uint8_t stepperEnablePin = 12;
+//TODO: unsigned long minPowerTime = 750; // time in µs needed to move one step - power off after this time for energy-saving/heat-sink ("chopper")
+//TODO: unsigned int chopperResolution = 30; // lowest playable note is ~24270 µs/step (~41 Hz) -> div/30 needed to get near minEnableTime
 
-String serialInputLine;
+// serial:
 const unsigned int maxLineLength = 127;
+String serialInputLine;
 boolean serialInputOverflow = false;
 
+// LED:
+uint8_t ledPin = LED_BUILTIN;
+
+// LCD:
 LiquidCrystal lcd(7, 6, 5, 4, 3, 2);
 
 void setup() {
+    // stepper:
+    pinMode(stepperPins[0], OUTPUT);
+    pinMode(stepperPins[1], OUTPUT);
+    pinMode(stepperPins[2], OUTPUT);
+    pinMode(stepperPins[3], OUTPUT);
+    pinMode(stepperEnablePin, OUTPUT);
+    stepperOff();
+
+    // frequency generator:
+    Timer1.initialize();
+    Timer1.stop();
+
     // serial:
     serialInputLine.reserve(maxLineLength + 1);
     serialInputLine = "";
@@ -36,26 +55,18 @@ void setup() {
     Serial.begin(115200);
     Serial.println("ok:Welcome to StepperPlayer - Valid commands: play:<frequency>, off, reset[:<frequency>], ping");
 
-    // LCD:
-    lcd.begin(16, 2);
-    lcd.print("StepperPlayer");
-
-    // stepper:
-    pinMode(stepperPins[0], OUTPUT);
-    pinMode(stepperPins[1], OUTPUT);
-    pinMode(stepperPins[2], OUTPUT);
-    pinMode(stepperPins[3], OUTPUT);
-    pinMode(enablePin, OUTPUT);
+    // LED:
     pinMode(ledPin, OUTPUT);
 
-    stepperOff();
-
-    // frequency generator:
-    Timer1.initialize();
-    Timer1.stop();
+    // LCD:
+    lcd.begin(16, 2);
+    lcd.print("Welcome to");
+    lcd.setCursor(0, 1);
+    lcd.print("StepperPlayer");
 }
 
 void loop() {
+    // Nothing to do here ... all events are handled by serialEvent() and timer-interrupt
 }
 
 /**
@@ -174,7 +185,7 @@ void stepperOff() {
     digitalWrite(stepperPins[2], LOW);
     digitalWrite(stepperPins[3], LOW);
     digitalWrite(stepperPins[4], LOW);
-    digitalWrite(enablePin, LOW);
+    digitalWrite(stepperEnablePin, LOW);
     digitalWrite(ledPin, LOW);
 }
 
