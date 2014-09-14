@@ -21,8 +21,10 @@
 // stepper:
 uint8_t stepperPins[] = {8, 9, 10, 11};
 uint8_t stepperEnablePin = 12;
-//TODO: unsigned long minPowerTime = 750; // time in µs needed to move one step - power off after this time for energy-saving/heat-sink ("chopper")
-//TODO: unsigned int chopperResolution = 30; // lowest playable note is ~24270 µs/step (~41 Hz) -> div/30 needed to get near minEnableTime
+long minPowerTime = 750; // time in µs needed to move one step - power off after this time for energy-saving/heat-sink ("chopper")
+int periodDenominator; // current period is divided by this to handle minPowerTime
+int powerNumerator; // count of short periods while power is on
+int currentNumerator; // current count of short periods in one full period
 
 // serial:
 const unsigned int maxLineLength = 127;
@@ -126,13 +128,39 @@ void processLine() {
 
         long period = (long) (1000000.0 / frequency); // time between steps in microseconds
 
+        if (period < minPowerTime) {
+            Serial.print("error:Frequency ");
+            Serial.print(frequency);
+            Serial.print(" too high - max frequency is currently ");
+            Serial.print(1000000.0 / minPowerTime);
+            Serial.print(" (based on minPowerTime)\n");
+            return;
+        }
+
+        int newPeriodDenominator, newPowerNumerator;
+        long shortPeriod = calcShortPeriod(period, &newPeriodDenominator, &newPowerNumerator);
+
+        Timer1.detachInterrupt();
+        Timer1.stop();
+        stepperOff();
+
+        periodDenominator = newPeriodDenominator;
+        powerNumerator = newPowerNumerator;
+        currentNumerator = 0;
+
         Timer1.start(); // start next period at zero
-        Timer1.attachInterrupt(moveStepper, period);
+        Timer1.attachInterrupt(timerInterrupt, shortPeriod);
 
         Serial.print("ok:Playing frequency ");
         Serial.print(frequency);
         Serial.print(" (period = ");
         Serial.print(period);
+        Serial.print("µs; shortPeriod = ");
+        Serial.print(shortPeriod);
+        Serial.print("µs; powerFraction = ");
+        Serial.print(powerNumerator);
+        Serial.print("/");
+        Serial.print(periodDenominator);
         Serial.print(")\n");
 
         lcd.clear();
@@ -176,10 +204,83 @@ void processLine() {
 }
 
 /**
- * Called from timer interrupt
+ * Calculate shortPeriod, periodDenominator and powerNumerator to handle minPowerTime
+ */
+long calcShortPeriod(long period, int *newPeriodDenominator, int *newPowerNumerator) {
+    int denominator, minDenominator, maxDenominator, bestDenominator = 1;
+    long difference, minDifference = period;
+    long shortPeriod;
+    int powerPeriods;
+
+    minDenominator = max(period / (minPowerTime + 50), 1); // tolerance if there is a good denominator little below
+    maxDenominator = max(period / (minPowerTime - 50), 10); // choose the best in this range
+/*
+Serial.print("debug:minDenominator = ");
+Serial.print(minDenominator);
+Serial.print("; maxDenominator = ");
+Serial.print(maxDenominator);
+Serial.print("\n");
+//*/
+
+    for (denominator = minDenominator; denominator <= maxDenominator; denominator++) {
+        shortPeriod = period / denominator;
+        powerPeriods = ceil((float) minPowerTime / shortPeriod);
+
+        difference = (period - shortPeriod * denominator) * 20 + // higher weight of full period difference
+            (shortPeriod * powerPeriods - minPowerTime); // normal weight of powerTime difference
+
+        if (difference < minDifference) {
+            bestDenominator = denominator;
+            minDifference = difference;
+        }
+/*
+Serial.print("debug:denominator = ");
+Serial.print(denominator);
+Serial.print("; shortPeriod = ");
+Serial.print(shortPeriod);
+Serial.print("; powerPeriods = ");
+Serial.print(powerPeriods);
+Serial.print("; difference = ");
+Serial.print(difference);
+Serial.print("; periodDiff = ");
+Serial.print(period - (shortPeriod * denominator));
+Serial.print("\n");
+//*/
+
+        if (minDifference < 100) {
+            break; // prefer lower denominators if difference is acceptable
+        }
+    }
+
+    shortPeriod = period / bestDenominator;
+    *newPeriodDenominator = bestDenominator;
+    *newPowerNumerator = ceil((float) minPowerTime / shortPeriod);
+
+    return shortPeriod;
+}
+
+/**
+ * Called on every short period (from hardware-timer-interrupt)
+ */
+void timerInterrupt() {
+    currentNumerator++;
+
+    if (currentNumerator >= powerNumerator) {
+        digitalWrite(stepperEnablePin, LOW);
+    }
+
+    if (currentNumerator >= periodDenominator) {
+        currentNumerator = 0;
+        moveStepper();
+    }
+}
+
+/**
+ * Called on every full period
  */
 void moveStepper() {
     // TODO: Implement stepper logic here
+    digitalWrite(stepperEnablePin, HIGH);
 }
 
 void stepperOff() {
