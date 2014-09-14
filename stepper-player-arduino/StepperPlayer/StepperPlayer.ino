@@ -53,7 +53,7 @@ void setup() {
     serialInputLine = "";
 
     Serial.begin(115200);
-    Serial.println("ok:Welcome to StepperPlayer - Valid commands: play:<frequency>, off, reset[:<frequency>], ping");
+    Serial.print("ok:Welcome to StepperPlayer - Valid commands: play:<frequency>, off, reset[:<frequency>], ping\n");
 
     // LED:
     pinMode(ledPin, OUTPUT);
@@ -79,7 +79,7 @@ void serialEvent() {
     
         if (receivedByte == '\n') {
             if (serialInputOverflow) {
-                Serial.println("error:Line too long");
+                Serial.print("error:Line too long\n");
             } else {
                 processLine();
             }
@@ -112,7 +112,7 @@ void processLine() {
     }
 
     if (command.length() == 0) {
-        Serial.println("error:Empty command");
+        Serial.print("error:Empty command\n");
         return;
     }
 
@@ -120,7 +120,7 @@ void processLine() {
         if (frequency < 0.1 || frequency > 20000) {
             Serial.print("error:Invalid frequency ");
             Serial.print(frequency);
-            Serial.println(" - valid only >= 0.1 && <= 20000");
+            Serial.print(" - valid only >= 0.1 && <= 20000\n");
             return;
         }
 
@@ -133,7 +133,7 @@ void processLine() {
         Serial.print(frequency);
         Serial.print(" (period = ");
         Serial.print(period);
-        Serial.println(")");
+        Serial.print(")\n");
 
         lcd.clear();
         lcd.print("Playing Hz:");
@@ -144,7 +144,7 @@ void processLine() {
         Timer1.stop();
         stepperOff();
 
-        Serial.println("ok:Playing off");
+        Serial.print("ok:Playing off\n");
 
         lcd.clear();
         lcd.print("Pause");
@@ -159,16 +159,16 @@ void processLine() {
         // TODO: Implement stepper logic here
         delay(1000);
 
-        Serial.println("ok:Reset complete");
+        Serial.print("ok:Reset complete\n");
 
         lcd.clear();
         lcd.print("Resetted");
     } else if (command == "ping") {
-        Serial.println("ok:Pong!");
+        Serial.print("ok:Pong!\n");
     } else {
         Serial.print("error:Invalid command \"");
         Serial.print(command);
-        Serial.println("\"");
+        Serial.print("\"\n");
     }
 }
 
