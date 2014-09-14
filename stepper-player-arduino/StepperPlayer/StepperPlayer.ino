@@ -57,6 +57,7 @@ void setup() {
 
     // LED:
     pinMode(ledPin, OUTPUT);
+    digitalWrite(ledPin, LOW);
 
     // LCD:
     lcd.begin(16, 2);
@@ -176,8 +177,6 @@ void processLine() {
  */
 void moveStepper() {
     // TODO: Implement stepper logic here
-
-    digitalWrite(ledPin, digitalRead(ledPin) ^ 1);
 }
 
 void stepperOff() {
@@ -186,6 +185,5 @@ void stepperOff() {
     digitalWrite(stepperPins[3], LOW);
     digitalWrite(stepperPins[4], LOW);
     digitalWrite(stepperEnablePin, LOW);
-    digitalWrite(ledPin, LOW);
 }
 
