@@ -150,7 +150,9 @@ void processLine() {
         Serial.print(frequency);
         Serial.print(" (period = ");
         Serial.print(period);
-        Serial.print("µs; shortPeriod = ");
+        Serial.print("µs (-");
+        Serial.print(period - (shortPeriod * periodDenominator));
+        Serial.print("); shortPeriod = ");
         Serial.print(shortPeriod);
         Serial.print("µs; powerFraction = ");
         Serial.print(powerNumerator);
@@ -284,4 +286,3 @@ void stepperOff() {
     digitalWrite(stepperPins[3], LOW);
     digitalWrite(stepperPins[4], LOW);
 }
-
