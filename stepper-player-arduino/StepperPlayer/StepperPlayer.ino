@@ -44,11 +44,8 @@ void setup() {
     pinMode(stepperPins[2], OUTPUT);
     pinMode(stepperPins[3], OUTPUT);
     pinMode(stepperEnablePin, OUTPUT);
-    stepperOff();
-
-    // frequency generator:
     Timer1.initialize();
-    Timer1.stop();
+    stepperOff();
 
     // serial:
     serialInputLine.reserve(maxLineLength + 1);
@@ -140,8 +137,6 @@ void processLine() {
         int newPeriodDenominator, newPowerNumerator;
         long shortPeriod = calcShortPeriod(period, &newPeriodDenominator, &newPowerNumerator);
 
-        Timer1.detachInterrupt();
-        Timer1.stop();
         stepperOff();
 
         periodDenominator = newPeriodDenominator;
@@ -169,8 +164,6 @@ void processLine() {
         lcd.print(frequency);
         lcd.print(" Hz");
     } else if (command == "off") {
-        Timer1.detachInterrupt();
-        Timer1.stop();
         stepperOff();
 
         Serial.print("ok:Playing off\n");
@@ -178,8 +171,6 @@ void processLine() {
         lcd.clear();
         lcd.print("Pause");
     } else if (command == "reset") {
-        Timer1.detachInterrupt();
-        Timer1.stop();
         stepperOff();
 
         lcd.clear();
@@ -284,6 +275,9 @@ void moveStepper() {
 }
 
 void stepperOff() {
+    Timer1.detachInterrupt();
+    Timer1.stop();
+
     digitalWrite(stepperEnablePin, LOW);
     digitalWrite(stepperPins[0], LOW);
     digitalWrite(stepperPins[2], LOW);
