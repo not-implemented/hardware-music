@@ -21,6 +21,10 @@
 // stepper:
 uint8_t stepperPins[] = {8, 9, 10, 11};
 uint8_t stepperEnablePin = 12;
+long maxPosition = 4000;
+long currentPosition = 0;
+int currentPin = 3;
+int currentDirection = 1;
 long minPowerTime = 750; // time in µs needed to move one step - power off after this time for energy-saving/heat-sink ("chopper")
 long periodDenominator; // current period is divided by this to handle minPowerTime
 long powerNumerator; // count of short periods while power is on
@@ -143,6 +147,8 @@ void processLine() {
         powerNumerator = newPowerNumerator;
         currentNumerator = 0;
 
+        moveStepper();
+
         Timer1.start(); // start next period at zero
         Timer1.attachInterrupt(timerInterrupt, shortPeriod);
 
@@ -257,7 +263,25 @@ void timerInterrupt() {
  * Called on every full period
  */
 void moveStepper() {
-    // TODO: Implement stepper logic here
+    digitalWrite(stepperPins[currentPin], LOW);
+
+    if (currentDirection < 0 && currentPosition <= 0) {
+        currentDirection = 1;
+    } else if (currentDirection > 0 && currentPosition >= maxPosition) {
+        currentDirection = -1;
+    }
+
+    currentPosition += currentDirection;
+
+    if (currentDirection < 0 && currentPin <= 0) {
+        currentPin = 3;
+    } else if (currentDirection > 0 && currentPin >= 3) {
+        currentPin = 0;
+    } else {
+        currentPin += currentDirection;
+    }
+
+    digitalWrite(stepperPins[currentPin], HIGH);
     digitalWrite(stepperEnablePin, HIGH);
 }
 
@@ -267,7 +291,7 @@ void stepperOff() {
 
     digitalWrite(stepperEnablePin, LOW);
     digitalWrite(stepperPins[0], LOW);
+    digitalWrite(stepperPins[1], LOW);
     digitalWrite(stepperPins[2], LOW);
     digitalWrite(stepperPins[3], LOW);
-    digitalWrite(stepperPins[4], LOW);
 }
