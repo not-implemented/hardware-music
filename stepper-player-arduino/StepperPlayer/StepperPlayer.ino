@@ -22,9 +22,9 @@
 uint8_t stepperPins[] = {8, 9, 10, 11};
 uint8_t stepperEnablePin = 12;
 long minPowerTime = 750; // time in µs needed to move one step - power off after this time for energy-saving/heat-sink ("chopper")
-int periodDenominator; // current period is divided by this to handle minPowerTime
-int powerNumerator; // count of short periods while power is on
-int currentNumerator; // current count of short periods in one full period
+long periodDenominator; // current period is divided by this to handle minPowerTime
+long powerNumerator; // count of short periods while power is on
+long currentNumerator; // current count of short periods in one full period
 
 // serial:
 const unsigned int maxLineLength = 127;
@@ -134,7 +134,7 @@ void processLine() {
             return;
         }
 
-        int newPeriodDenominator, newPowerNumerator;
+        long newPeriodDenominator, newPowerNumerator;
         long shortPeriod = calcShortPeriod(period, &newPeriodDenominator, &newPowerNumerator);
 
         stepperOff();
@@ -199,14 +199,19 @@ void processLine() {
 /**
  * Calculate shortPeriod, periodDenominator and powerNumerator to handle minPowerTime
  */
-long calcShortPeriod(long period, int *newPeriodDenominator, int *newPowerNumerator) {
-    int denominator, minDenominator, maxDenominator, bestDenominator = 1;
+long calcShortPeriod(long period, long *newPeriodDenominator, long *newPowerNumerator) {
+    long denominator, minDenominator, maxDenominator, bestDenominator = 1;
     long difference, minDifference = period;
-    long shortPeriod;
-    int powerPeriods;
+    long shortPeriod, powerPeriods;
 
-    minDenominator = max(period / (minPowerTime + 50), 1); // tolerance if there is a good denominator little below
-    maxDenominator = max(period / (minPowerTime - 50), 10); // choose the best in this range
+    minDenominator = max(period / (minPowerTime + 100), 1);
+    maxDenominator = max(period / (minPowerTime / 4 - 20), 1);
+
+    if (maxDenominator - minDenominator > 500) {
+        // reduce search-CPU time for really low frequencies:
+        minDenominator = max(period / (minPowerTime + 20), 1);
+        maxDenominator = max(period / (minPowerTime - 20), 1);
+    }
 /*
 Serial.print("debug:minDenominator = ");
 Serial.print(minDenominator);
