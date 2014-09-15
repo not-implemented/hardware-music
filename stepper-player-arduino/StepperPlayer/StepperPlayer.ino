@@ -212,13 +212,6 @@ long calcShortPeriod(long period, long *newPeriodDenominator, long *newPowerNume
         minDenominator = max(period / (minPowerTime + 20), 1);
         maxDenominator = max(period / (minPowerTime - 20), 1);
     }
-/*
-Serial.print("debug:minDenominator = ");
-Serial.print(minDenominator);
-Serial.print("; maxDenominator = ");
-Serial.print(maxDenominator);
-Serial.print("\n");
-//*/
 
     for (denominator = minDenominator; denominator <= maxDenominator; denominator++) {
         shortPeriod = period / denominator;
@@ -231,19 +224,6 @@ Serial.print("\n");
             bestDenominator = denominator;
             minDifference = difference;
         }
-/*
-Serial.print("debug:denominator = ");
-Serial.print(denominator);
-Serial.print("; shortPeriod = ");
-Serial.print(shortPeriod);
-Serial.print("; powerPeriods = ");
-Serial.print(powerPeriods);
-Serial.print("; difference = ");
-Serial.print(difference);
-Serial.print("; periodDiff = ");
-Serial.print(period - (shortPeriod * denominator));
-Serial.print("\n");
-//*/
 
         if (minDifference < 100) {
             break; // prefer lower denominators if difference is acceptable
