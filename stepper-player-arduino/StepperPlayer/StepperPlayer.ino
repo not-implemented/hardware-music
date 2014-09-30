@@ -19,7 +19,7 @@
 #include <LiquidCrystal.h>
 
 // stepper:
-uint8_t stepperPins[] = {8, 9, 10, 11};
+uint8_t stepperPins[] = {8, 10, 9, 11};
 uint8_t stepperEnablePin = 12;
 long maxPosition = 4000;
 long currentPosition = 0;
