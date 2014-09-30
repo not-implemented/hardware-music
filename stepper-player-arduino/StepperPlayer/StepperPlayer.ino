@@ -25,10 +25,6 @@ long maxPosition = 4000;
 long currentPosition = 0;
 int currentPin = 3;
 int currentDirection = 1;
-long minPowerTime = 750; // time in µs needed to move one step - power off after this time for energy-saving/heat-sink ("chopper")
-long periodDenominator; // current period is divided by this to handle minPowerTime
-long powerNumerator; // count of short periods while power is on
-long currentNumerator; // current count of short periods in one full period
 
 // serial:
 const unsigned int maxLineLength = 127;
@@ -129,42 +125,17 @@ void processLine() {
 
         long period = (long) (1000000.0 / frequency); // time between steps in microseconds
 
-        if (period < minPowerTime) {
-            Serial.print("error:Frequency ");
-            Serial.print(frequency);
-            Serial.print(" too high - max frequency is currently ");
-            Serial.print(1000000.0 / minPowerTime);
-            Serial.print(" (based on minPowerTime)\n");
-            return;
-        }
-
-        long newPeriodDenominator, newPowerNumerator;
-        long shortPeriod = calcShortPeriod(period, &newPeriodDenominator, &newPowerNumerator);
-
         stepperOff();
-
-        periodDenominator = newPeriodDenominator;
-        powerNumerator = newPowerNumerator;
-        currentNumerator = 0;
-
         moveStepper();
 
         Timer1.start(); // start next period at zero
-        Timer1.attachInterrupt(timerInterrupt, shortPeriod);
+        Timer1.attachInterrupt(moveStepper, period);
 
         Serial.print("ok:Playing frequency ");
         Serial.print(frequency);
         Serial.print(" (period = ");
         Serial.print(period);
-        Serial.print("µs (-");
-        Serial.print(period - (shortPeriod * periodDenominator));
-        Serial.print("); shortPeriod = ");
-        Serial.print(shortPeriod);
-        Serial.print("µs; powerFraction = ");
-        Serial.print(powerNumerator);
-        Serial.print("/");
-        Serial.print(periodDenominator);
-        Serial.print(")\n");
+        Serial.print("µs)\n");
 
         lcd.clear();
         lcd.print("Playing:");
@@ -203,64 +174,7 @@ void processLine() {
 }
 
 /**
- * Calculate shortPeriod, periodDenominator and powerNumerator to handle minPowerTime
- */
-long calcShortPeriod(long period, long *newPeriodDenominator, long *newPowerNumerator) {
-    long denominator, minDenominator, maxDenominator, bestDenominator = 1;
-    long difference, minDifference = period;
-    long shortPeriod, powerPeriods;
-
-    minDenominator = max(period / (minPowerTime + 100), 1);
-    maxDenominator = max(period / (minPowerTime / 4 - 20), 1);
-
-    if (maxDenominator - minDenominator > 500) {
-        // reduce search-CPU time for really low frequencies:
-        minDenominator = max(period / (minPowerTime + 20), 1);
-        maxDenominator = max(period / (minPowerTime - 20), 1);
-    }
-
-    for (denominator = minDenominator; denominator <= maxDenominator; denominator++) {
-        shortPeriod = period / denominator;
-        powerPeriods = ceil((float) minPowerTime / shortPeriod);
-
-        difference = (period - shortPeriod * denominator) * 20 + // higher weight of full period difference
-            (shortPeriod * powerPeriods - minPowerTime); // normal weight of powerTime difference
-
-        if (difference < minDifference) {
-            bestDenominator = denominator;
-            minDifference = difference;
-        }
-
-        if (minDifference < 100) {
-            break; // prefer lower denominators if difference is acceptable
-        }
-    }
-
-    shortPeriod = period / bestDenominator;
-    *newPeriodDenominator = bestDenominator;
-    *newPowerNumerator = ceil((float) minPowerTime / shortPeriod);
-
-    return shortPeriod;
-}
-
-/**
- * Called on every short period (from hardware-timer-interrupt)
- */
-void timerInterrupt() {
-    currentNumerator++;
-
-    if (currentNumerator >= powerNumerator) {
-        digitalWrite(stepperEnablePin, LOW);
-    }
-
-    if (currentNumerator >= periodDenominator) {
-        currentNumerator = 0;
-        moveStepper();
-    }
-}
-
-/**
- * Called on every full period
+ * Called on every period (from hardware-timer-interrupt)
  */
 void moveStepper() {
     digitalWrite(stepperPins[currentPin], LOW);
