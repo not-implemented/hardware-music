@@ -19,11 +19,11 @@
 #include <LiquidCrystal.h>
 
 // stepper:
-uint8_t stepperPins[] = {8, 10, 9, 11};
-uint8_t stepperEnablePin = 12;
-long maxPosition = 4000;
+uint8_t stepperStepPin = 8;
+uint8_t stepperDirectionPin = 9;
+uint8_t stepperEnablePin = 10;
+long maxPosition = 8000;
 long currentPosition = 0;
-int currentPin = 3;
 int currentDirection = 1;
 
 // serial:
@@ -39,10 +39,8 @@ LiquidCrystal lcd(7, 6, 5, 4, 3, 2);
 
 void setup() {
     // stepper:
-    pinMode(stepperPins[0], OUTPUT);
-    pinMode(stepperPins[1], OUTPUT);
-    pinMode(stepperPins[2], OUTPUT);
-    pinMode(stepperPins[3], OUTPUT);
+    pinMode(stepperStepPin, OUTPUT);
+    pinMode(stepperDirectionPin, OUTPUT);
     pinMode(stepperEnablePin, OUTPUT);
     Timer1.initialize();
     stepperOff();
@@ -177,8 +175,6 @@ void processLine() {
  * Called on every period (from hardware-timer-interrupt)
  */
 void moveStepper() {
-    digitalWrite(stepperPins[currentPin], LOW);
-
     if (currentDirection < 0 && currentPosition <= 0) {
         currentDirection = 1;
     } else if (currentDirection > 0 && currentPosition >= maxPosition) {
@@ -187,25 +183,19 @@ void moveStepper() {
 
     currentPosition += currentDirection;
 
-    if (currentDirection < 0 && currentPin <= 0) {
-        currentPin = 3;
-    } else if (currentDirection > 0 && currentPin >= 3) {
-        currentPin = 0;
-    } else {
-        currentPin += currentDirection;
-    }
-
-    digitalWrite(stepperPins[currentPin], HIGH);
-    digitalWrite(stepperEnablePin, HIGH);
+    digitalWrite(stepperEnablePin, LOW); // LOW = on
+    digitalWrite(stepperDirectionPin, currentDirection < 0 ? HIGH : LOW);
+    digitalWrite(stepperStepPin, HIGH); // pulse
+    digitalWrite(stepperStepPin, LOW);
+    digitalWrite(ledPin, HIGH);
 }
 
 void stepperOff() {
     Timer1.detachInterrupt();
     Timer1.stop();
 
-    digitalWrite(stepperEnablePin, LOW);
-    digitalWrite(stepperPins[0], LOW);
-    digitalWrite(stepperPins[1], LOW);
-    digitalWrite(stepperPins[2], LOW);
-    digitalWrite(stepperPins[3], LOW);
+    digitalWrite(stepperStepPin, LOW);
+    digitalWrite(stepperDirectionPin, LOW);
+    digitalWrite(stepperEnablePin, HIGH); // HIGH = off
+    digitalWrite(ledPin, LOW);
 }
