@@ -22,7 +22,7 @@
 uint8_t stepperStepPin = 8;
 uint8_t stepperDirectionPin = 9;
 uint8_t stepperEnablePin = 10;
-long maxPosition = 8000;
+long maxPosition = 7000;
 long currentPosition = 0;
 int currentDirection = 1;
 
