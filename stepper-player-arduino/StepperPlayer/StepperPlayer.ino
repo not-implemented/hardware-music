@@ -5,7 +5,7 @@
  * - "play:<frequency>": Frequency as ASCII-float (i.e. "play:430.538") to play until "off" command is sent
  * - "off": Stop playing
  * - "reset" or "reset:<frequency>": Move stepper back to start position at which Arduino was switched on
- *    - Default frequency while resetting is 440 Hz
+ *    - Default frequency while resetting is 1300 Hz
  *    - Command is blocking - response is sent after resetting is complete - no other commands are processed
  *      while resetting
  * - "ping": Just returns a pong-message
@@ -148,15 +148,27 @@ void processLine() {
         lcd.clear();
         lcd.print("Pause");
     } else if (command == "reset") {
-        stepperOff();
+        if (frequency < 0.1 || frequency > 16000) {
+            frequency = 1300;
+        }
+
+        long period = (long) (1000000.0 / frequency);
 
         lcd.clear();
         lcd.print("Resetting to");
         lcd.setCursor(0, 1);
         lcd.print("home position");
 
-        // TODO: Implement stepper logic here
-        delay(1000);
+        stepperOff();
+        currentDirection = -1;
+
+        while (currentPosition > 0) {
+            delayMicroseconds(period);
+            moveStepper();
+        }
+
+        stepperOff();
+        currentDirection = 1;
 
         Serial.print("ok:Resetted to home position\n");
 
